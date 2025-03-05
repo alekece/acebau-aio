@@ -11,7 +11,7 @@ pub struct Record<T: Entity, M> {
     pub(crate) id: T::Id,
     #[deref]
     #[deref_mut]
-    pub(crate) data: T,
+    pub(crate) entity: T,
     pub(crate) metadata: M,
 }
 
@@ -21,6 +21,6 @@ impl<T: Entity, M> Record<T, M> {
     }
 
     fn into_inner(self) -> T {
-        self.data
+        self.entity
     }
 }

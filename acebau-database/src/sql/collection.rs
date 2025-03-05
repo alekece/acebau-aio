@@ -28,7 +28,7 @@ where
     fn to_record(&self) -> Result<Record<T, Metadata>> {
         Ok(Record {
             id: self.try_get(0)?,
-            data: <T as Entity>::Format::deserialize(self.try_get(1)?)?,
+            entity: <T as Entity>::Format::deserialize(self.try_get(1)?)?,
             metadata: Metadata {
                 state: self.try_get(2)?,
                 keywords: self.try_get(3)?,
@@ -62,7 +62,7 @@ where
                 r#"
                     CREATE TABLE IF NOT EXISTS {} (
                         id UUID PRIMARY KEY NOT NULL,
-                        data TEXT NOT NULL,
+                        entity TEXT NOT NULL,
                         state SMALLINT NOT NULL,
                         keywords TEXT[] NOT NULL
                     )
@@ -119,7 +119,7 @@ where
         let id = T::Id::generate();
 
         sqlx::query(&format!(
-            "INSERT INTO {} (id, data, state, keywords) VALUES ($1, $2, $3, $4, $5)",
+            "INSERT INTO {} (id, entity, state, keywords) VALUES ($1, $2, $3, $4, $5)",
             T::schema_name()
         ))
         .bind(&id)
@@ -134,7 +134,7 @@ where
 
     async fn fetch_one(&self, connection: &mut C, id: &T::Id) -> Result<Record<T, Metadata>> {
         sqlx::query(&format!(
-            "SELECT id, data, state, keywords from {} WHERE id = $1 AND state = $2",
+            "SELECT id, entity, state, keywords from {} WHERE id = $1 AND state = $2",
             T::schema_name()
         ))
         .bind(id)
@@ -147,7 +147,7 @@ where
 
     async fn fetch_many(&self, connection: &mut C, ids: &[T::Id]) -> Result<Vec<Record<T, Metadata>>> {
         sqlx::query(&format!(
-            "SELECT id, data, state, keywords from {} WHERE id IN ($1) and state = $2",
+            "SELECT id, entity, state, keywords from {} WHERE id IN ($1) and state = $2",
             T::schema_name()
         ))
         .bind(ids)
@@ -161,7 +161,7 @@ where
 
     async fn fetch_all(&self, connection: &mut C) -> Result<Vec<Record<T, Metadata>>> {
         sqlx::query(&format!(
-            "SELECT id, data, state, keywords FROM {} WHERE state = $1",
+            "SELECT id, entity, state, keywords FROM {} WHERE state = $1",
             T::schema_name()
         ))
         .bind(State::Active)
@@ -252,24 +252,24 @@ where
                     .execute(connection.executor())
                     .await?
             }
-            UpdateQuery::Update(data) => {
-                sqlx::query(&format!("UPDATE {} SET data = $1 WHERE id = $2", T::schema_name()))
-                    .bind(T::Format::serialize(data)?)
+            UpdateQuery::Update(entity) => {
+                sqlx::query(&format!("UPDATE {} SET entity = $1 WHERE id = $2", T::schema_name()))
+                    .bind(T::Format::serialize(entity)?)
                     .bind(id)
                     .execute(connection.executor())
                     .await?
             }
-            UpdateQuery::UpdateOrInsert(data) => {
+            UpdateQuery::UpdateOrInsert(entity) => {
                 sqlx::query(&format!(
                     r#"
-                        INSERT INTO {} (id, data, state, keywords)
+                        INSERT INTO {} (id, entity, state, keywords)
                         VALUES ($1, $2, $3, $4)
-                        ON CONFLICT(id) DO UPDATE SET data = $5
+                        ON CONFLICT(id) DO UPDATE SET entity = $5
                     "#,
                     T::schema_name()
                 ))
                 .bind(id)
-                .bind(T::Format::serialize(data)?)
+                .bind(T::Format::serialize(entity)?)
                 .bind(State::Active)
                 .bind(Vec::default())
                 .execute(connection.executor())

@@ -27,7 +27,7 @@ where
     fn to_record(&self) -> Result<Record<T, Metadata>> {
         Ok(Record {
             id: self.try_get(0)?,
-            data: <T as Entity>::Format::deserialize(self.try_get(1)?)?,
+            entity: <T as Entity>::Format::deserialize(self.try_get(1)?)?,
             metadata: Metadata {
                 created_at: self.try_get(2)?,
             },
@@ -63,7 +63,7 @@ where
                 r#"
                     CREATE TABLE IF NOT EXISTS {} (
                         id UUID PRIMARY KEY NOT NULL,
-                        data TEXT NOT NULL,
+                        entity TEXT NOT NULL,
                         created_at TIMESTAMP WITH TIME ZONE NOT NULL,
                         pulled BOOLEAN NOT NULL
                     )
@@ -121,7 +121,7 @@ where
         let id = T::Id::generate();
 
         sqlx::query(&format!(
-            "INSERT INTO {} (id, data, created_at, pulled) VALUES($1, $2, $3, $4)",
+            "INSERT INTO {} (id, entity, created_at, pulled) VALUES($1, $2, $3, $4)",
             self.name
         ))
         .bind(&id)
@@ -164,12 +164,12 @@ where
 
         let query = match options.persistence_mode {
             PersistenceMode::Keep => format!(
-                "UPDATE {} SET pulled = TRUE WHERE id IN ({}) RETURNING id, data, created_at",
+                "UPDATE {} SET pulled = TRUE WHERE id IN ({}) RETURNING id, entity, created_at",
                 self.name,
                 query_builder.sql()
             ),
             PersistenceMode::Remove => format!(
-                "DELETE FROM {} WHERE id IN ({}) RETURNING id, data, created_at",
+                "DELETE FROM {} WHERE id IN ({}) RETURNING id, entity, created_at",
                 self.name,
                 query_builder.sql()
             ),
