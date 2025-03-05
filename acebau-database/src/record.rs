@@ -16,11 +16,11 @@ pub struct Record<T: Entity, M> {
 }
 
 impl<T: Entity, M> Record<T, M> {
-    fn id(&self) -> &<T as Entity>::Id {
+    pub fn id(&self) -> &<T as Entity>::Id {
         &self.id
     }
 
-    fn into_inner(self) -> T {
+    pub fn into_inner(self) -> T {
         self.entity
     }
 }

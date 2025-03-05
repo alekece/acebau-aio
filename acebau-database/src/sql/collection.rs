@@ -56,7 +56,6 @@ where
     for<'a> DB::Arguments<'a>: IntoArguments<'a, DB>,
 {
     async fn create_schema(&self, connection: &mut C) -> Result<()> {
-        let table_name = T::schema_name();
         let queries = [
             format!(
                 r#"

@@ -1,4 +1,4 @@
-use std::{borrow::Cow, num::NonZeroUsize};
+use std::num::NonZeroUsize;
 
 use async_trait::async_trait;
 use sqlx::{
