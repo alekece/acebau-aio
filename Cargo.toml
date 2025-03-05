@@ -1,0 +1,3 @@
+[workspace]
+members = ["acebau-backend", "acebau-core", "acebau-database"]
+resolver = "2"
