@@ -1,0 +1,24 @@
+[package]
+name = "acebau-server"
+version = "0.1.0"
+edition.workspace = true
+
+[features]
+default = []
+
+[dependencies]
+acebau-core = { workspace = true, features = ["serde"] }
+acebau-database = { workspace = true, features = ["serde"] }
+clap = { workspace = true, features = ["env"] }
+snafu = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+uuid = { workspace = true, features = ["serde"] }
+url = { workspace = true, features = ["serde"] }
+
+actix-web = "4.9.0"
+actix-cors = "0.7.1"
+# actix-service = "2.0.2"
+# actix-http = "3.9.0"
+
+[dev-dependencies]
+sqlx = { workspace = true, features = ["postgres"] }

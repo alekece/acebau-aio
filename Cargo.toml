@@ -1,3 +1,32 @@
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.89.0"
+authors = [
+    "Alexis Le Provost <alexis.leprovost@outlook.com>"
+]
+license-file = "LICENSE"
+repository = "https://github.com/alekece/acebau-aio"
+description = "All-in-one Acebau toolkit for managing products, clients, bids and internal operations"
+
 [workspace]
-members = ["acebau-backend", "acebau-core", "acebau-database"]
-resolver = "2"
+members = [
+        "crate/core",
+        "crate/database",
+        "crate/server"
+]
+resolver = "3"
+
+[workspace.dependencies]
+acebau-core = { path = "crate/core" }
+acebau-database = { path = "crate/database" }
+chrono = "0.4.41"
+clap = { version = "4.5.41", features = ["derive"] }
+derive_more = "2.0.1"
+snafu = "0.8.6"
+serial_test = "3.2.0"
+serde = { version = "1.0.219", features = ["derive"] }
+uuid = "1.17.0"
+url = "2.5.4"
+sqlx = { version = "0.8.3", features = ["runtime-tokio"] }
+strum = "0.27.2"

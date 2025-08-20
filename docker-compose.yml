@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  database:
+    image: postgres:17-alpine
+    container_name: acebau_database
+    environment:
+      POSTGRES_USER: ${DATABASE_USER}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    ports:
+      - "${DATABASE_PORT}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  database_data:
