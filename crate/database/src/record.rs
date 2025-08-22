@@ -1,21 +1,18 @@
 use chrono::{DateTime, Utc};
 use derive_more::{Deref, DerefMut};
-use sqlx::{FromRow, Type};
-use strum::Display;
+use sqlx::FromRow;
 use uuid::Uuid;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Type, Display)]
-#[sqlx(type_name = "status", rename_all = "lowercase")]
-#[strum(serialize_all = "lowercase")]
+use crate::Status;
+
+#[derive(Debug, Clone, FromRow)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub enum Status {
-    Draft,
-    Published,
-    Archived,
+pub struct Metadata {
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
-/// `Record` struct represents a database row of a specific type `T` with some metadata.
-/// It contains a unique identifier, the data itself, and some timestamps.
+/// `Record` struct represents a database record of a specific type `T` with metadata attached to it.
 #[derive(Debug, Clone, FromRow, Deref, DerefMut)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Record<T> {
@@ -25,9 +22,8 @@ pub struct Record<T> {
     #[deref]
     #[deref_mut]
     data: T,
-    created_at: DateTime<Utc>,
-    #[sqlx(default)]
-    updated_at: Option<DateTime<Utc>>,
+    #[sqlx(flatten)]
+    metadata: Metadata,
 }
 
 impl<T> Record<T> {
@@ -40,10 +36,24 @@ impl<T> Record<T> {
     }
 
     pub fn created_at(&self) -> DateTime<Utc> {
-        self.created_at
+        self.metadata.created_at
     }
 
-    pub fn updated_at(&self) -> Option<DateTime<Utc>> {
-        self.updated_at
+    pub fn updated_at(&self) -> DateTime<Utc> {
+        self.metadata.updated_at
     }
+
+    pub fn into_inner(self) -> T {
+        self.data
+    }
+}
+
+#[derive(Debug, Clone, FromRow, Deref, DerefMut)]
+pub struct RecordLite<T> {
+    id: Uuid,
+    status: Status,
+    #[sqlx(flatten)]
+    #[deref]
+    #[deref_mut]
+    data: T,
 }

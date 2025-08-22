@@ -8,7 +8,7 @@ create table materials
     type text not null,
     unit unit not null,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
 
 create table material_providers
@@ -23,5 +23,8 @@ create table material_providers
     bulk_price numeric,
     bulk_min_quantity integer,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
-)
+    updated_at timestamptz not null default now()
+);
+
+select trigger_updated_at('materials');
+select trigger_updated_at('material_providers');

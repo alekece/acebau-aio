@@ -2,8 +2,9 @@
 	let { items } = $props();
 </script>
 
-<nav>
+
+<nav class="flex items-center gap-4">
 	{#each items as item}
-		<a href={item.slug}>{item.title}</a>
+		<button type="button" class="btn preset-filled">{item.title}</button>
 	{/each}
 </nav>

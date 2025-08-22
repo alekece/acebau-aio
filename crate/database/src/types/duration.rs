@@ -9,9 +9,9 @@ use sqlx::{
 
 #[derive(Debug, Snafu)]
 pub enum DurationError {
-    #[snafu(display("Cannot decode duration from database: {source}"))]
+    #[snafu(display("Cannot decode duration: {source}"))]
     Decode { source: BoxDynError },
-    #[snafu(display("Cannot encode duration to database: {source}"))]
+    #[snafu(display("Cannot encode duration: {source}"))]
     Encode { source: BoxDynError },
 }
 

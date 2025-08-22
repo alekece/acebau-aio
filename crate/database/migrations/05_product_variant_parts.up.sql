@@ -17,10 +17,12 @@ create table product_variant_parts
     filament_id uuid references materials(id) on delete cascade,
     quantity integer not null default 1,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
 
 create trigger enforce_filament_type
 before insert or update on product_variant_parts
 for each row
 execute function check_filament_type();
+
+select trigger_updated_at('product_variant_parts');

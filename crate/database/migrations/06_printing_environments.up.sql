@@ -6,5 +6,7 @@ create table printing_environments
     operating_factor float4 not null default 0.7 check (operating_factor > 0 and operating_factor <= 1),
     electricity_cost_per_kwh float4 not null,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
+
+select trigger_updated_at('printing_environments');

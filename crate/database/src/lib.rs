@@ -1,18 +1,20 @@
 #![allow(clippy::pedantic)]
 
+mod changeset;
 mod database;
-mod executor;
 pub mod models;
 mod record;
-#[cfg(test)]
-mod test;
-pub mod types;
 mod repository;
+#[cfg(test)]
+mod tests;
+pub mod types;
 
-pub use database::{Database, Transaction};
-pub use executor::Executor;
-pub use models::product::{Product, ProductRepository, ProductError};
-pub use record::{Record, Status};
-pub use repository::Repository;
+pub use changeset::Changeset;
+pub use database::{Database, DatabaseHandle, Executor, Transaction};
+pub use record::Record;
+pub use repository::{FetchOptions, Repository};
+pub use types::{Duration, Percentage, Quantity, Status};
+
+// pub use query::{UpdateQuery};
 
 pub static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");

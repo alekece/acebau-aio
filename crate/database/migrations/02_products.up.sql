@@ -6,7 +6,7 @@ create table products
     description text,
     version integer not null default 1,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
 
 create table product_variants (
@@ -23,7 +23,7 @@ create table product_variants (
     length integer,
     weight integer,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
 
 select trigger_updated_at('products');

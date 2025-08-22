@@ -1,4 +1,4 @@
-create type status as enum ('draft', 'published', 'archived');
+create type status as enum ('draft', 'active', 'archived');
 
 create or replace function set_updated_at()
     returns trigger as

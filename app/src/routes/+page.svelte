@@ -1,9 +1,6 @@
-<script context="module">
-    let message = "Prout";
-</script>
-
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
-<div>
-  <p>{message}</p>
+<div class="flex flex-col">
+	<h1 class="preset-typo-title">Welcome to SvelteKit</h1>
+	<p>
+		Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation
+	</p>
 </div>

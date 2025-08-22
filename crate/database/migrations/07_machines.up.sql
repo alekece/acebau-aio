@@ -23,7 +23,7 @@ create table machine_models
     print_length numeric not null,
     print_height numeric not null,
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
 
 create trigger default_maintenance_cost
@@ -42,5 +42,8 @@ create table machines
     last_maintenance_at date,
     cost_buffer_factor numeric not null default 1.3 check (cost_buffer_factor >= 1),
     created_at timestamptz not null default now(),
-    updated_at timestamptz
+    updated_at timestamptz not null default now()
 );
+
+select trigger_updated_at('machines');
+select trigger_updated_at('machine_models');

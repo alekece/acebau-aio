@@ -1,8 +1,8 @@
 use snafu::{ResultExt, Snafu};
-use sqlx::{Error, FromRow};
+use sqlx::{Error, FromRow, QueryBuilder};
 use uuid::Uuid;
 
-use crate::{database::DatabaseHandle, repository::FetchOptions, types::Percentage, Executor, Record, Repository};
+use crate::{Changeset, DatabaseHandle, Executor, FetchOptions, Percentage, Record, Repository, Status};
 
 #[derive(Debug, Snafu)]
 pub enum PrintingEnvironmentError {
@@ -24,19 +24,33 @@ pub struct PrintingEnvironment {
     pub electricity_cost_per_kwh: f32,
 }
 
+#[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct PrintingEnvironmentPatch {
+    pub name: Option<String>,
+    pub operating_factor: Option<Percentage>,
+    pub electricity_cost_per_kwh: Option<f32>,
+}
+
 impl<T> Repository<PrintingEnvironment> for DatabaseHandle<T>
 where
     Self: for<'a> Executor<'a>,
 {
     type Error = PrintingEnvironmentError;
+    type Patch = PrintingEnvironmentPatch;
 
-    async fn insert(&mut self, item: PrintingEnvironment) -> Result<Record<PrintingEnvironment>, Self::Error> {
+    async fn insert(
+        &mut self,
+        item: &PrintingEnvironment,
+        status: Status,
+    ) -> Result<Record<PrintingEnvironment>, Self::Error> {
         sqlx::query_as(
-            "INSERT INTO printing_environments (name, operating_factor, electricity_cost_per_kwh) VALUES ($1, $2, $3) RETURNING *",
+            "INSERT INTO printing_environments (name, operating_factor, electricity_cost_per_kwh, status) VALUES ($1, $2, $3, $4) RETURNING *",
         )
         .bind(&item.name)
         .bind(item.operating_factor)
         .bind(item.electricity_cost_per_kwh)
+        .bind(status)
         .fetch_one(self.executor())
         .await
         .context(InsertFailedSnafu)
@@ -45,14 +59,39 @@ where
     async fn update(
         &mut self,
         id: Uuid,
-        item: PrintingEnvironment,
+        changeset: &Changeset<Self::Patch>,
     ) -> Result<Record<PrintingEnvironment>, Self::Error> {
-        sqlx::query_as(
-            "UPDATE printing_environments SET name = $1, operating_factor = $2, electricity_cost_per_kwh = $3 WHERE id = $4 RETURNING *",
-        )
-            .bind(&item.name)
-            .bind(item.operating_factor)
-            .bind(item.electricity_cost_per_kwh)
+        let mut query_builder = QueryBuilder::new("UPDATE printing_environments SET ");
+        let mut values = query_builder.separated(", ");
+
+        if changeset.is_empty() {
+            return self.fetch_by_id(id).await;
+        }
+
+        if let Some(data) = changeset.data() {
+            if let Some(name) = &data.name {
+                values.push("name = ").push_bind_unseparated(name);
+            }
+            if let Some(operating_factor) = &data.operating_factor {
+                values
+                    .push("operating_factor = ")
+                    .push_bind_unseparated(operating_factor);
+            }
+            if let Some(electricity_cost_per_kwh) = &data.electricity_cost_per_kwh {
+                values
+                    .push("electricity_cost_per_kwh = ")
+                    .push_bind_unseparated(electricity_cost_per_kwh);
+            }
+        }
+
+        if let Some(status) = changeset.status() {
+            values.push("status = ").push_bind_unseparated(status);
+        }
+
+        query_builder.push(" WHERE id = ").push_bind(id).push(" RETURNING *");
+
+        query_builder
+            .build_query_as()
             .fetch_one(self.executor())
             .await
             .context(UpdateFailedSnafu { id })
@@ -84,6 +123,14 @@ where
 
         Ok(())
     }
+
+    async fn status(&mut self, id: Uuid) -> Result<Status, Self::Error> {
+        sqlx::query_scalar("SELECT status FROM printing_environments WHERE id = $1")
+            .bind(id)
+            .fetch_one(self.executor())
+            .await
+            .context(NotFoundSnafu { id })
+    }
 }
 
 #[cfg(test)]
@@ -101,7 +148,7 @@ mod tests {
             electricity_cost_per_kwh: 0.15,
         };
 
-        let inserted_environment = database.insert(environment).await?;
+        let inserted_environment = database.insert(&environment, Status::Active).await?;
 
         assert_eq!(inserted_environment.name, "Test Environment");
         assert_eq!(inserted_environment.operating_factor.to_float(), 0.8);

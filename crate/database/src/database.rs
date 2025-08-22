@@ -2,8 +2,6 @@ use snafu::{ResultExt, Snafu};
 use sqlx::{migrate::MigrateError, postgres::PgPoolOptions, PgConnection, PgPool, Postgres};
 use url::Url;
 
-use crate::executor::Executor;
-
 #[derive(Debug, Snafu)]
 pub enum DatabaseError {
     #[snafu(display("Failed to connect to the database: {source}"))]
@@ -22,6 +20,12 @@ pub enum DatabaseError {
 
 pub type Transaction<'a> = DatabaseHandle<sqlx::Transaction<'a, Postgres>>;
 pub type Database = DatabaseHandle<PgPool>;
+
+pub trait Executor<'a> {
+    type Executor: sqlx::Executor<'a, Database = Postgres>;
+
+    fn executor(&'a mut self) -> Self::Executor;
+}
 
 #[derive(Debug, Clone)]
 pub struct DatabaseHandle<T> {
