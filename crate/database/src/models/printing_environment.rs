@@ -2,7 +2,10 @@ use snafu::{ResultExt, Snafu};
 use sqlx::{Error, FromRow, QueryBuilder};
 use uuid::Uuid;
 
-use crate::{Changeset, DatabaseHandle, Executor, FetchOptions, Percentage, Record, Repository, Status};
+use crate::{
+    DatabaseHandle, Executor, FetchOptions, Record, Repository,
+    types::{Percentage, Status},
+};
 
 #[derive(Debug, Snafu)]
 pub enum PrintingEnvironmentError {
@@ -37,7 +40,7 @@ where
     Self: for<'a> Executor<'a>,
 {
     type Error = PrintingEnvironmentError;
-    type Patch = PrintingEnvironmentPatch;
+    type Changeset = PrintingEnvironmentPatch;
 
     async fn insert(
         &mut self,
@@ -59,32 +62,27 @@ where
     async fn update(
         &mut self,
         id: Uuid,
-        changeset: &Changeset<Self::Patch>,
+        changeset: &Self::Changeset,
+        status: Option<Status>,
     ) -> Result<Record<PrintingEnvironment>, Self::Error> {
         let mut query_builder = QueryBuilder::new("UPDATE printing_environments SET ");
         let mut values = query_builder.separated(", ");
 
-        if changeset.is_empty() {
-            return self.fetch_by_id(id).await;
+        if let Some(name) = &changeset.name {
+            values.push("name = ").push_bind_unseparated(name);
+        }
+        if let Some(operating_factor) = &changeset.operating_factor {
+            values
+                .push("operating_factor = ")
+                .push_bind_unseparated(operating_factor);
+        }
+        if let Some(electricity_cost_per_kwh) = &changeset.electricity_cost_per_kwh {
+            values
+                .push("electricity_cost_per_kwh = ")
+                .push_bind_unseparated(electricity_cost_per_kwh);
         }
 
-        if let Some(data) = changeset.data() {
-            if let Some(name) = &data.name {
-                values.push("name = ").push_bind_unseparated(name);
-            }
-            if let Some(operating_factor) = &data.operating_factor {
-                values
-                    .push("operating_factor = ")
-                    .push_bind_unseparated(operating_factor);
-            }
-            if let Some(electricity_cost_per_kwh) = &data.electricity_cost_per_kwh {
-                values
-                    .push("electricity_cost_per_kwh = ")
-                    .push_bind_unseparated(electricity_cost_per_kwh);
-            }
-        }
-
-        if let Some(status) = changeset.status() {
+        if let Some(status) = status {
             values.push("status = ").push_bind_unseparated(status);
         }
 

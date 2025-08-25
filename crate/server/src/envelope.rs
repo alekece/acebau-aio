@@ -1,69 +1,72 @@
-use acebau_database::{Record, Status};
-use chrono::{DateTime, Utc};
+use actix_web::{
+    HttpRequest, HttpResponse, Responder,
+    body::EitherBody,
+    error::JsonPayloadError,
+    mime,
+    web::{Json, Query},
+};
 use serde::{Deserialize, Serialize};
-use strum::EnumString;
-use uuid::Uuid;
+use serde_json::{Value, json};
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, EnumString)]
-#[serde(rename_all = "snake_case")]
-pub enum View {
-    Full,
-    #[default]
-    Compact,
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+struct FieldMask {
+    fields: Option<Vec<String>>,
+}
+
+impl FieldMask {
+    fn is_empty(&self) -> bool {
+        self.fields.as_ref().map(|fields| fields.is_empty()).unwrap_or(true)
+    }
+
+    fn project(&self, value: &mut Value) {
+        match value {
+            Value::Object(map) => {
+                if let Some(fields) = &self.fields {
+                    map.retain(|k, _| fields.contains(k));
+                }
+            }
+            Value::Array(array) => {
+                for value in array.iter_mut() {
+                    self.project(value);
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Metadata {
-    created_at: DateTime<Utc>,
-    updated_at: DateTime<Utc>,
-}
+pub struct Envelope<T>(pub T);
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Envelope<T> {
-    id: Uuid,
-    status: Status,
-    data: T,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    metadata: Option<Metadata>,
-}
+impl<T> Envelope<T> {}
 
-impl<T> Envelope<T> {
-    pub fn new(record: Record<T>) -> Self {
-        Self {
-            id: record.id(),
-            status: record.status(),
-            metadata: Some(Metadata {
-                created_at: record.created_at(),
-                updated_at: record.updated_at(),
-            }),
-            data: record.into_inner(),
+impl<T: Serialize> Responder for Envelope<T> {
+    type Body = EitherBody<String>;
+
+    fn respond_to(self, request: &HttpRequest) -> HttpResponse<Self::Body> {
+        match (
+            serde_json::to_value(&self.0),
+            Query::<FieldMask>::from_query(request.query_string()),
+        ) {
+            (Ok(mut value), Ok(field_mask)) => {
+                if !field_mask.is_empty() {
+                    field_mask.project(&mut value);
+                }
+                /*
+                                if let Value::Array(values) = value {
+                                    value = json!({"items": values});
+                                }
+                */
+                match HttpResponse::Ok()
+                    .content_type(mime::APPLICATION_JSON)
+                    .message_body(serde_json::to_string(&value).unwrap())
+                {
+                    Ok(response) => response.map_into_left_body(),
+                    Err(error) => HttpResponse::from_error(error).map_into_right_body(),
+                }
+            }
+            (Err(error), _) => HttpResponse::from_error(JsonPayloadError::Serialize(error)).map_into_right_body(),
+            (_, Err(error)) => HttpResponse::from_error(error).map_into_right_body(),
         }
-    }
-
-    pub fn with_view(record: Record<T>, view: View) -> Self {
-        match view {
-            View::Full => Self::new(record),
-            View::Compact => Self {
-                id: record.id(),
-                status: record.status(),
-                data: record.into_inner(),
-                metadata: None,
-            },
-        }
-    }
-
-    pub fn into_compact(self) -> Self {
-        Self {
-            id: self.id,
-            status: self.status,
-            data: self.data,
-            metadata: None,
-        }
-    }
-}
-
-impl<T> From<Record<T>> for Envelope<T> {
-    fn from(record: Record<T>) -> Self {
-        Self::new(record)
     }
 }

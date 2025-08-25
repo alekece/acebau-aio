@@ -1,9 +1,9 @@
-use acebau_database::{models::PrintingEnvironment, FetchOptions, Repository, Status};
+use acebau_database::{FetchOptions, Repository, models::PrintingEnvironment, types::Status};
 use actix_web::{
+    Responder, Result,
     dev::HttpServiceFactory,
     get, post,
     web::{self, Data, Json, Path, Query},
-    Responder, Result,
 };
 use uuid::Uuid;
 

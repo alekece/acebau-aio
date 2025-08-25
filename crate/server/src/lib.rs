@@ -1,14 +1,12 @@
 #![allow(clippy::pedantic)]
 
-use acebau_database::{models::PrintingEnvironment, Database};
+use acebau_database::{Database, models::PrintingEnvironment};
 use actix_web::web::ServiceConfig;
 
-pub mod routes;
 pub mod envelope;
-pub mod query;
+pub mod routes;
 
 pub use envelope::Envelope;
-pub use query::ViewQuery;
 
 #[derive(Debug)]
 pub struct AppState {

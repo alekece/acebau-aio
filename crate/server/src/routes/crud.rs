@@ -1,25 +1,26 @@
-use acebau_database::{Changeset, Database, FetchOptions, Repository, Status};
+use acebau_database::{Database, FetchOptions, Repository, types::Status};
 use actix_web::{
-    delete,
+    HttpResponse, Responder, Result, delete,
     dev::HttpServiceFactory,
     get, patch, post,
     web::{self, Data, Json, Path, Query},
-    HttpResponse, Responder, Result,
 };
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{AppState, Envelope, ViewQuery};
+use crate::{AppState, Envelope};
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 struct InsertRequest<T> {
     status: Status,
+    #[serde(flatten)]
     data: T,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize)]
 struct UpdateRequest<T> {
-    status: Status,
+    status: Option<Status>,
+    #[serde(flatten)]
     data: T,
 }
 
@@ -38,26 +39,24 @@ pub fn scope<T>(name: &str) -> impl HttpServiceFactory + 'static {
 }
 
 #[get("")]
-async fn fetch_all<T>(query: Query<ViewQuery>, context: Data<AppState>) -> Result<impl Responder>
+async fn fetch_all<T>(context: Data<AppState>) -> Result<impl Responder>
 where
     T: Serialize,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
-    let view = query.view.unwrap_or_default();
-
     Ok(Json(
         <Database as Repository<T>>::fetch_all(&mut context.database.clone(), FetchOptions::default())
             .await
             .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))?
             .into_iter()
-            .map(|record| Envelope::with_view(record, view))
+            .map(Envelope)
             .collect::<Vec<_>>(),
     ))
 }
 
 #[get("/{id}")]
-async fn fetch<T>(id: Path<Uuid>, query: Query<ViewQuery>, context: Data<AppState>) -> Result<impl Responder>
+async fn fetch<T>(id: Path<Uuid>, context: Data<AppState>) -> Result<impl Responder>
 where
     T: Serialize,
     Database: Repository<T>,
@@ -66,7 +65,7 @@ where
     <Database as Repository<T>>::fetch_by_id(&mut context.database.clone(), id.into_inner())
         .await
         .map_err(|e| actix_web::error::ErrorNotFound(e.to_string()))
-        .map(|record| Json(Envelope::with_view(record, query.view.unwrap_or_default())))
+        .map(Envelope)
 }
 
 #[delete("/{id}")]
@@ -97,9 +96,8 @@ where
 
 #[patch("/{id}")]
 async fn update<T>(
-    changeset: Json<Changeset<<Database as Repository<T>>::Patch>>,
+    changeset: Json<UpdateRequest<<Database as Repository<T>>::Changeset>>,
     id: Path<Uuid>,
-    query: Query<ViewQuery>,
     context: Data<AppState>,
 ) -> Result<impl Responder>
 where
@@ -107,10 +105,12 @@ where
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
-    <Database as Repository<T>>::update(&mut context.database.clone(), id.into_inner(), &changeset.into_inner())
+    let UpdateRequest { data, status } = changeset.into_inner();
+
+    <Database as Repository<T>>::update(&mut context.database.clone(), id.into_inner(), &data, status)
         .await
         .map_err(|e| actix_web::error::ErrorNotFound(e.to_string()))
-        .map(|record| Json(Envelope::with_view(record, query.view.unwrap_or_default())))
+        .map(Envelope)
 }
 
 #[post("")]
@@ -125,5 +125,5 @@ where
     <Database as Repository<T>>::insert(&mut context.database.clone(), &data, status)
         .await
         .map_err(|e| actix_web::error::ErrorInternalServerError(e.to_string()))
-        .map(|record| Json(Envelope::new(record)))
+        .map(Envelope)
 }

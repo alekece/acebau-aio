@@ -12,6 +12,7 @@ acebau-database = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["env"] }
 snafu = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 url = { workspace = true, features = ["serde"] }
 chrono = { workspace = true }
@@ -19,7 +20,10 @@ strum = { workspace = true, features = ["derive"] }
 
 actix-web = "4.9.0"
 actix-cors = "0.7.1"
-# actix-service = "2.0.2"
+actix-utils = "3.0.1"
+actix-service = "2.0.2"
+futures-util = "0.3.31"
+
 # actix-http = "3.9.0"
 
 [dev-dependencies]

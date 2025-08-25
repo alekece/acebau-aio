@@ -1,8 +1,6 @@
-use snafu::Snafu;
-use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::{Changeset, Record, Status};
+use crate::{Record, types::Status};
 
 #[derive(Debug, Clone)]
 pub struct FetchOptions {
@@ -58,13 +56,14 @@ impl Default for FetchOptions {
 
 pub trait Repository<T> {
     type Error;
-    type Patch;
+    type Changeset;
 
     fn insert(&mut self, item: &T, status: Status) -> impl Future<Output = Result<Record<T>, Self::Error>>;
     fn update(
         &mut self,
         id: Uuid,
-        changeset: &Changeset<Self::Patch>,
+        changeset: &Self::Changeset,
+        status: Option<Status>,
     ) -> impl Future<Output = Result<Record<T>, Self::Error>>;
     fn fetch_by_id(&mut self, id: Uuid) -> impl Future<Output = Result<Record<T>, Self::Error>>;
     fn fetch_all(&mut self, options: FetchOptions) -> impl Future<Output = Result<Vec<Record<T>>, Self::Error>>;
