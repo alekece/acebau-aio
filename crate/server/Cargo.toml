@@ -13,10 +13,13 @@ clap = { workspace = true, features = ["env"] }
 snafu = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+serde_with = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 url = { workspace = true, features = ["serde"] }
 chrono = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
 actix-web = "4.9.0"
 actix-cors = "0.7.1"

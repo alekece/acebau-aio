@@ -4,16 +4,23 @@ version = "0.1.0"
 edition.workspace = true
 
 [features]
-default = []
-serde = ["dep:serde", "chrono/serde"]
+default = ["derive"]
+serde = ["dep:serde", "chrono/serde", "serde_with", "uuid/serde"]
+derive = ["acebau-database-derive"]
 
 [dependencies]
 acebau-core = { workspace = true, features = ["sqlx", "serde"] }
+acebau-database-derive = { workspace = true, optional = true}
 chrono = { workspace = true }
 derive_more = { workspace = true, features = ["deref", "deref_mut", "display", "from"] }
 snafu = { workspace = true }
 serde = { workspace = true, optional = true }
+serde_with = { workspace = true, optional = true }
 uuid = { workspace = true, features = ["v4"] }
 url = { workspace = true }
 sqlx = { workspace = true, features = ["chrono", "uuid", "postgres"] }
 strum = { workspace = true, features = ["derive"] }
+
+
+[dev-dependencies]
+assert_matches = { workspace = true }

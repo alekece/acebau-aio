@@ -1,96 +1,45 @@
-use snafu::{ResultExt, Snafu};
-use sqlx::{types::Json, FromRow};
+use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::{database::DatabaseHandle, Executor, Record};
+use crate::{
+    types::{Length, Percentage, PreTaxPrice, Mass},
+    Table,
+};
 
-#[derive(Debug, Snafu)]
-pub enum ProductError {
-    #[snafu(display("Product '{id}' not found"))]
-    NotFound {
-        id: Uuid,
-        source: sqlx::Error,
-    },
-    Insert {
-        source: sqlx::Error,
-    },
-}
-
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, FromRow, Table)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[table(name = "products")]
+#[changeset(setter(prefix = "with"))]
 pub struct Product {
-    pub code: String,
+    pub name: String,
     pub description: Option<String>,
     pub version: i32,
 }
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone, FromRow, Table)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[table(name = "product_variants")]
+#[changeset(setter(prefix = "with"))]
 pub struct ProductVariant {
     pub product_id: Uuid,
     pub sku: String,
-    pub name: Option<String>,
-    pub price_ht: f32,
-    pub vat_ratio: f32,
+    pub display_name: Option<String>,
+    pub price_ht: PreTaxPrice,
+    pub vat_ratio: Percentage,
     pub resale_coefficient: f32,
-    pub options: Json<Vec<ProductOption>>,
+    pub height: Option<Length>,
+    pub width: Option<Length>,
+    pub length: Option<Length>,
+    pub weight: Option<Mass>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, FromRow, Table)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-pub struct ProductOption {
-    pub name: String,
-    pub value: String,
+#[table(name = "product_variant_parts")]
+#[changeset(setter(prefix = "with"))]
+pub struct ProductVariantPart {
+    pub product_variant_id: Uuid,
+    pub part_id: Uuid,
+    pub filament_id: Uuid,
+    pub quantity: i64,
 }
-
-pub trait ProductRepository {
-    fn insert_product(&mut self, product: Product) -> impl Future<Output = Result<Record<Product>, ProductError>>;
-    fn fetch_product_by_id(&mut self, id: Uuid) -> impl Future<Output = Result<Record<Product>, ProductError>>;
-}
-
-impl<T> ProductRepository for DatabaseHandle<T>
-where
-    Self: for<'a> Executor<'a>,
-{
-    async fn insert_product(&mut self, product: Product) -> Result<Record<Product>, ProductError> {
-        sqlx::query_as("INSERT INTO products (code, description, version) VALUES ($1, $2, $3) RETURNING *")
-            .bind(product.code)
-            .bind(product.description)
-            .bind(product.version)
-            .fetch_one(self.executor())
-            .await
-            .context(InsertSnafu)
-    }
-
-    async fn fetch_product_by_id(&mut self, id: Uuid) -> Result<Record<Product>, ProductError> {
-        sqlx::query_as("SELECT * FROM products WHERE id = $1")
-            .bind(id)
-            .fetch_one(self.executor())
-            .await
-            .context(NotFoundSnafu { id })
-    }
-}
-
-// #[cfg(test)]
-// mod tests {
-//     use sqlx::PgPool;
-
-//     use super::*;
-
-//     use crate::test::UuidExt;
-
-//     #[sqlx::test(fixtures(path = "../../fixtures", scripts("products")))]
-//     #[ignore = "requires a running PostgreSQL instance"]
-//     async fn test_find_product_by_id(pool: PgPool) -> Result<(), Box<dyn std::error::Error>> {
-//         let mut database = DatabaseHandle::new(pool);
-
-//         let product_id = Uuid::new_fake(0);
-//         let product = database.fetch_product_by_id(product_id).await?;
-
-//         assert_eq!(&product.code, "P001");
-//         assert_eq!(product.description.as_deref(), Some("Product 1"));
-//         assert_eq!(product.version, 1);
-
-//         Ok(())
-//     }
-// }

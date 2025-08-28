@@ -12,6 +12,7 @@ pub struct Record<T> {
     id: Uuid,
     status: Status,
     #[sqlx(flatten)]
+    #[cfg_attr(feature = "serde", serde(flatten))]
     #[deref]
     #[deref_mut]
     data: T,

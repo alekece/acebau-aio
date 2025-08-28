@@ -24,8 +24,12 @@ impl Duration {
         Self(chrono::Duration::seconds(seconds))
     }
 
-    pub fn as_hour(&self) -> f32 {
+    pub fn as_hours(&self) -> f32 {
         self.0.num_minutes() as f32 / 60.
+    }
+
+    pub fn as_years(&self) -> f32 {
+        self.0.num_days() as f32 / 365.
     }
 }
 
@@ -67,7 +71,7 @@ mod tests {
             (Duration::from_seconds(1800), 0.5),
             (Duration::from_seconds(0), 0.0),
         ] {
-            assert_eq!(duration.as_hour(), expected_hours);
+            assert_eq!(duration.as_hours(), expected_hours);
         }
     }
 }

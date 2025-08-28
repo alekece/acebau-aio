@@ -2,6 +2,8 @@ use snafu::{ResultExt, Snafu};
 use sqlx::{migrate::MigrateError, postgres::PgPoolOptions, PgConnection, PgPool, Postgres};
 use url::Url;
 
+use crate::{repository::RepositoryHandle, Executor, Repository};
+
 #[derive(Debug, Snafu)]
 pub enum DatabaseError {
     #[snafu(display("Failed to connect to the database: {source}"))]
@@ -21,12 +23,6 @@ pub enum DatabaseError {
 pub type Transaction<'a> = DatabaseHandle<sqlx::Transaction<'a, Postgres>>;
 pub type Database = DatabaseHandle<PgPool>;
 
-pub trait Executor<'a> {
-    type Executor: sqlx::Executor<'a, Database = Postgres>;
-
-    fn executor(&'a mut self) -> Self::Executor;
-}
-
 #[derive(Debug, Clone)]
 pub struct DatabaseHandle<T> {
     executor: T,
@@ -35,6 +31,17 @@ pub struct DatabaseHandle<T> {
 impl<T> DatabaseHandle<T> {
     pub fn new(executor: T) -> Self {
         Self { executor }
+    }
+
+    /// Get a repository handle for the specified type.
+    ///
+    /// This method is helpful to disambiguate repository types when multiple
+    /// repositories are in use or when the compiler hit the opaqueness wall.
+    pub fn repository<U>(&mut self) -> RepositoryHandle<'_, Self, U>
+    where
+        Self: Repository<U>,
+    {
+        RepositoryHandle::new(self)
     }
 }
 

@@ -1,34 +1,19 @@
-create or replace function set_maintenance_cost()
-    returns trigger as
-$$
-begin
-  if new.annual_maintenance_cost is null then
-    new.annual_maintenance_cost := new.price * 0.1;
-  end if;
-  return new;
-end;
-$$ language plpgsql;
-
 create table machine_models
 (
     id uuid primary key default gen_random_uuid(),
     status status not null default 'draft',
     name text not null,
     amortized_lifetime interval not null,
-    average_power_consumption numeric not null,
+    average_energy_consumption numeric not null,
     price numeric not null,
-    additional_pieces_cost numeric not null default 0,
-    annual_maintenance_cost numeric,
+    additional_pieces numeric not null,
+    annual_maintenance numeric not null,
     print_width numeric not null,
-    print_length numeric not null,
+    print_depth numeric not null,
     print_height numeric not null,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );
-
-create trigger default_maintenance_cost
-before insert or update on machine_models
-for each row execute function set_maintenance_cost();
 
 create table machines
 (

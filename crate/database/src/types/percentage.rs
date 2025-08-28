@@ -16,10 +16,11 @@ impl Percentage {
     pub fn try_new(value: f32) -> Result<Self, PercentageError> {
         ensure!((0.0..=100.0).contains(&value), OutOfBoundsSnafu { value });
 
-        Ok(Self(value / 100.))
+        Ok(Self(value / 100.0))
     }
 
-    pub fn to_float(&self) -> f32 {
+    /// Get the raw normalized value (0.0 to 1.0).
+    pub fn to_normalize(&self) -> f32 {
         self.0
     }
 
@@ -30,12 +31,12 @@ impl Percentage {
 
     /// Scale down a value by the percentage.
     pub fn scale_down(&self, value: f32) -> f32 {
-        value / (1. + self.0)
+        value / (1.0 + self.0)
     }
 
     /// Scale up a value by the percentage.
     pub fn scale_up(&self, value: f32) -> f32 {
-        value * (1. + self.0)
+        value * (1.0 + self.0)
     }
 }
 
@@ -47,12 +48,12 @@ impl Type<Postgres> for Percentage {
 
 impl Encode<'_, Postgres> for Percentage {
     fn encode_by_ref(&self, buf: &mut <Postgres as Database>::ArgumentBuffer<'_>) -> Result<IsNull, BoxDynError> {
-        <f32 as Encode<'_, Postgres>>::encode_by_ref(&self.0, buf)
+        <f32 as Encode<'_, Postgres>>::encode_by_ref(&(self.0 * 100.0), buf)
     }
 }
 
 impl Decode<'_, Postgres> for Percentage {
     fn decode(value: <Postgres as Database>::ValueRef<'_>) -> Result<Self, BoxDynError> {
-        Ok(Self(<f32 as Decode<'_, Postgres>>::decode(value)?))
+        Ok(Self(<f32 as Decode<'_, Postgres>>::decode(value)? / 100.0))
     }
 }

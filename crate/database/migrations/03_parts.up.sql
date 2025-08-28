@@ -9,7 +9,7 @@ create table parts
     height numeric not null,
     print_duration interval not null,
     filament_required numeric not null,
-    complexity_factor numeric(3, 2) not null default 1.0,
+    complexity_factor numeric(3, 1) not null default 1.0,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );

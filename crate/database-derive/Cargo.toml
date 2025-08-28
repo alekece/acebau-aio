@@ -1,0 +1,16 @@
+[package]
+name = "acebau-database-derive"
+version = "0.1.0"
+edition.workspace = true
+
+[lib]
+proc-macro = true
+
+[dependencies]
+syn = { version = "2", features = ["full", "extra-traits"] }
+proc-macro2 = "1"
+proc-macro-error = "1"
+quote = "1"
+darling = "0.21"
+itertools = { workspace = true }
+heck = "0.5.0"

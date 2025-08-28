@@ -1,5 +1,6 @@
 #![allow(clippy::pedantic)]
 
+mod executor;
 mod database;
 pub mod models;
 mod record;
@@ -8,9 +9,13 @@ mod repository;
 mod tests;
 pub mod types;
 
-pub use database::{Database, DatabaseHandle, Executor, Transaction};
+#[cfg(feature = "derive")]
+pub use acebau_database_derive::Table;
+
+pub use executor::Executor;
+pub use database::{Database, DatabaseHandle, Transaction};
 pub use record::Record;
-pub use repository::{FetchOptions, Repository};
+pub use repository::{FetchOptions, Repository, RepositoryError};
 
 // pub use query::{UpdateQuery};
 

@@ -1,15 +1,19 @@
 use actix_web::{
-    HttpRequest, HttpResponse, Responder,
     body::EitherBody,
     error::JsonPayloadError,
+    http::StatusCode,
     mime,
-    web::{Json, Query},
+    web::Query,
+    HttpRequest, HttpResponse, Responder,
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{Value, json};
+use serde_json::{json, Value};
+use serde_with::{formats::CommaSeparator, serde_as, StringWithSeparator};
 
+#[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 struct FieldMask {
+    #[serde_as(as = "Option<StringWithSeparator<CommaSeparator, String>>")]
     fields: Option<Vec<String>>,
 }
 
@@ -35,29 +39,46 @@ impl FieldMask {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Envelope<T>(pub T);
+#[derive(Debug, Clone)]
+pub struct Envelope<T> {
+    data: T,
+    status: StatusCode,
+}
 
-impl<T> Envelope<T> {}
+impl<T> Envelope<T> {
+    pub fn ok(data: T) -> Self {
+        Self {
+            data,
+            status: StatusCode::OK,
+        }
+    }
+
+    pub fn created(data: T) -> Self {
+        Self {
+            data,
+            status: StatusCode::CREATED,
+        }
+    }
+}
 
 impl<T: Serialize> Responder for Envelope<T> {
     type Body = EitherBody<String>;
 
     fn respond_to(self, request: &HttpRequest) -> HttpResponse<Self::Body> {
         match (
-            serde_json::to_value(&self.0),
+            serde_json::to_value(&self.data),
             Query::<FieldMask>::from_query(request.query_string()),
         ) {
             (Ok(mut value), Ok(field_mask)) => {
                 if !field_mask.is_empty() {
                     field_mask.project(&mut value);
                 }
-                /*
-                                if let Value::Array(values) = value {
-                                    value = json!({"items": values});
-                                }
-                */
-                match HttpResponse::Ok()
+
+                if let Value::Array(values) = value {
+                    value = json!({"items": values});
+                }
+
+                match HttpResponse::build(self.status)
                     .content_type(mime::APPLICATION_JSON)
                     .message_body(serde_json::to_string(&value).unwrap())
                 {

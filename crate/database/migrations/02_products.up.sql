@@ -16,7 +16,7 @@ create table product_variants (
     sku text unique not null,
     display_name text,
     price_ht numeric(10, 2) not null,
-    vat_ratio numeric(4, 3) not null default 0.2,
+    vat_ratio numeric(3) not null default 20,
     resale_coefficient numeric(3, 2) not null,
     height integer,
     width integer,
