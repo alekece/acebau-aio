@@ -29,15 +29,15 @@ pub type Time = Metric<TimeUnit>;
 
 impl Time {
     pub fn from_years(value: f32) -> Self {
-        Self::new(value, TimeUnit::Year)
+        Self::with_unit(value, TimeUnit::Year)
     }
 
     pub fn from_days(value: f32) -> Self {
-        Self::new(value, TimeUnit::Day)
+        Self::with_unit(value, TimeUnit::Day)
     }
 
     pub fn from_hours(value: f32) -> Self {
-        Self::new(value, TimeUnit::Hour)
+        Self::with_unit(value, TimeUnit::Hour)
     }
 
     pub fn to_years(self) -> Self {

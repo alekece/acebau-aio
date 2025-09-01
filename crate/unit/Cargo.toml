@@ -1,0 +1,15 @@
+[package]
+name = "acebau-unit"
+version = "0.1.0"
+edition.workspace = true
+
+[features]
+default = []
+sqlx = ["dep:sqlx"]
+serde = ["dep:serde"]
+
+[dependencies]
+snafu = { workspace = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+sqlx = { workspace = true, optional = true }
+derive_more = { workspace = true, features = ["display"] }

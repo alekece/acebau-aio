@@ -26,11 +26,11 @@ pub type Mass = Metric<MassUnit>;
 
 impl Mass {
     pub fn from_kilograms(value: f32) -> Self {
-        Self::new(value, MassUnit::Kilogram)
+        Self::with_unit(value, MassUnit::Kilogram)
     }
 
     pub fn from_grams(value: f32) -> Self {
-        Self::new(value, MassUnit::Gram)
+        Self::with_unit(value, MassUnit::Gram)
     }
 
     pub fn to_kilograms(self) -> Self {

@@ -26,11 +26,11 @@ pub type Energy = Metric<EnergyUnit>;
 
 impl Energy {
     pub fn from_kilowatts(value: f32) -> Self {
-        Self::new(value, EnergyUnit::Kilowatt)
+        Self::with_unit(value, EnergyUnit::Kilowatt)
     }
 
     pub fn from_watts(value: f32) -> Self {
-        Self::new(value, EnergyUnit::Watt)
+        Self::with_unit(value, EnergyUnit::Watt)
     }
 
     pub fn to_kilowatts(self) -> Self {

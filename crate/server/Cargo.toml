@@ -7,7 +7,7 @@ edition.workspace = true
 default = []
 
 [dependencies]
-acebau-core = { workspace = true, features = ["serde"] }
+acebau-unit = { workspace = true, features = ["serde", "sqlx"] }
 acebau-database = { workspace = true, features = ["serde"] }
 clap = { workspace = true, features = ["env"] }
 snafu = { workspace = true }

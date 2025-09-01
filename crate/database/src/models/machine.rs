@@ -2,8 +2,8 @@ use sqlx::FromRow;
 use uuid::Uuid;
 
 use crate::{
-    types::{Duration, Energy, EnergyPerTime, Length, Percentage, PreTaxPrice, PricePerTime, Rate, Time},
     Table,
+    types::{Duration, Energy, EnergyPerTime, Length, Percentage, PreTaxPrice, PricePerTime, Ratio, Time},
 };
 
 #[derive(Debug, Clone, FromRow, Table)]

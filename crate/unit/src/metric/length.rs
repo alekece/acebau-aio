@@ -29,15 +29,15 @@ pub type Length = Metric<LengthUnit>;
 
 impl Length {
     pub fn from_millimeters(value: f32) -> Self {
-        Self::new(value, LengthUnit::Millimeter)
+        Self::with_unit(value, LengthUnit::Millimeter)
     }
 
     pub fn from_centimeters(value: f32) -> Self {
-        Self::new(value, LengthUnit::Centimeter)
+        Self::with_unit(value, LengthUnit::Centimeter)
     }
 
     pub fn from_meters(value: f32) -> Self {
-        Self::new(value, LengthUnit::Meter)
+        Self::with_unit(value, LengthUnit::Meter)
     }
 
     pub fn to_millimeters(self) -> Self {
