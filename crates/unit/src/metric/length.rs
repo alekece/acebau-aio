@@ -1,6 +1,5 @@
 use strum::EnumString;
 
-use super::Metric;
 use crate::Unit;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Unit)]
@@ -16,5 +15,3 @@ pub enum LengthUnit {
     #[default]
     Millimeter,
 }
-
-pub type Length = Metric<LengthUnit>;

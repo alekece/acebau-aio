@@ -1,6 +1,5 @@
 use strum::EnumString;
 
-use super::Metric;
 use crate::Unit;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Unit)]
@@ -13,5 +12,3 @@ pub enum EnergyUnit {
     #[default]
     Watt,
 }
-
-pub type Energy = Metric<EnergyUnit>;
