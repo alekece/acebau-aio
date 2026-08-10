@@ -3,20 +3,39 @@ name = "acebau-api"
 version = "0.1.0"
 edition.workspace = true
 
-[features]
-default = []
-
 [dependencies]
-acebau-database = { workspace = true }
-clap = { workspace = true, features = ["env"] }
+acebau-activity = { workspace = true }
+acebau-analytics = { workspace = true }
+acebau-catalogue = { workspace = true }
+acebau-config = { workspace = true }
+acebau-database = { workspace = true, features = ["serde"] }
+acebau-files = { workspace = true }
+acebau-finance = { workspace = true }
+acebau-inventory = { workspace = true }
+acebau-invoice = { workspace = true }
+acebau-machine = { workspace = true }
+acebau-order = { workspace = true }
+acebau-part = { workspace = true }
+acebau-production = { workspace = true }
+acebau-recipe = { workspace = true }
+acebau-reseller = { workspace = true }
+acebau-settings = { workspace = true }
+acebau-unit = { workspace = true, features = ["graphql"] }
 clap-config-fallback = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+reqwest = { workspace = true }
+snafu = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 axum = { workspace = true }
+async-graphql = { workspace = true }
+async-graphql-axum = { workspace = true }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
 tower-http = { workspace = true, features = ["cors"] }
+uuid = { workspace = true }
 
 [dev-dependencies]
+acebau-unit = { workspace = true }
 sqlx = { workspace = true, features = ["postgres"] }

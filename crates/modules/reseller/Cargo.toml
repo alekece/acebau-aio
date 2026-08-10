@@ -1,0 +1,13 @@
+[package]
+name = "acebau-reseller"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+acebau-database = { workspace = true }
+async-graphql = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
+sqlx = { workspace = true, features = ["chrono", "uuid"] }
+strum = { workspace = true, features = ["derive"] }
+uuid = { workspace = true }

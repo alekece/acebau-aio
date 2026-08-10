@@ -6,17 +6,17 @@ use crate::{Repository, repository::RepositoryHandle};
 
 #[derive(Debug, Snafu)]
 pub enum DatabaseError {
-    #[snafu(display("Failed to connect to the database: {source}"))]
+    #[snafu(display("cannot connect to the database: {source}"))]
     Connection { source: sqlx::Error },
-    #[snafu(display("Failed to start database transaction: {source}"))]
+    #[snafu(display("cannot start database transaction: {source}"))]
     BeginTransaction { source: sqlx::Error },
-    #[snafu(display("Failed to commit transaction: {source}"))]
+    #[snafu(display("cannot commit transaction: {source}"))]
     CommitTransaction { source: sqlx::Error },
-    #[snafu(display("Failed to rollback transaction: {source}"))]
+    #[snafu(display("cannot rollback transaction: {source}"))]
     RollbackTransaction { source: sqlx::Error },
-    #[snafu(display("Migration failed: {source}"))]
+    #[snafu(display("cannot perform migration: {source}"))]
     Migration { source: MigrateError },
-    #[snafu(display("Database operation failed: {source}"))]
+    #[snafu(display("database operation failed: {source}"))]
     Internal { source: sqlx::Error },
 }
 
@@ -34,18 +34,39 @@ pub struct DatabaseHandle<T> {
     executor: T,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct MigrationOptions {
+    /// Ignore migrations recorded in the database but not provided by this migrator.
+    pub ignore_unrecognized_migrations: bool,
+}
+
+impl Default for MigrationOptions {
+    fn default() -> Self {
+        Self {
+            ignore_unrecognized_migrations: true,
+        }
+    }
+}
+
+impl MigrationOptions {
+    pub fn reject_unrecognized_migrations(mut self) -> Self {
+        self.ignore_unrecognized_migrations = false;
+
+        self
+    }
+}
+
 impl<T> DatabaseHandle<T> {
     pub fn new(executor: T) -> Self {
         Self { executor }
     }
+}
 
-    /// Get a repository handle for the specified type.
-    ///
-    /// This method is helpful to disambiguate repository types when multiple
-    /// repositories are in use or when the compiler hit the opaqueness wall.
-    pub fn repository<U>(&mut self) -> RepositoryHandle<'_, Self, U>
+impl<T> DatabaseHandle<T> {
+    pub fn repository<U>(&mut self) -> RepositoryHandle<'_, T, U>
     where
         Self: Repository<U>,
+        U: async_graphql::ObjectType + async_graphql::TypeName,
     {
         RepositoryHandle::new(self)
     }
@@ -53,17 +74,50 @@ impl<T> DatabaseHandle<T> {
 
 impl Database {
     pub async fn connect(url: Url) -> Result<Self, DatabaseError> {
-        Self::connect_with(url.as_str(), PgPoolOptions::default()).await
+        let executor = PgPoolOptions::default()
+            .connect(url.as_str())
+            .await
+            .context(ConnectionSnafu)?;
+
+        Ok(Self::new(executor))
     }
 
-    pub async fn connect_with(url: &str, options: PgPoolOptions) -> Result<Self, DatabaseError> {
-        Ok(Self::new(options.connect(url).await.context(ConnectionSnafu)?))
+    /// Runs each migrator in slice order with the same migration options.
+    pub async fn migrate(
+        &self,
+        migrators: &[&sqlx::migrate::Migrator],
+        options: MigrationOptions,
+    ) -> Result<(), DatabaseError> {
+        for migrator in migrators {
+            let migrator = sqlx::migrate::Migrator {
+                migrations: migrator.migrations.clone(),
+                ignore_missing: options.ignore_unrecognized_migrations,
+                locking: migrator.locking,
+                no_tx: migrator.no_tx,
+            };
+            migrator.run(&self.executor).await.context(MigrationSnafu)?;
+        }
+
+        Ok(())
     }
 
     pub async fn transaction<'a>(&self) -> Result<Transaction<'a>, DatabaseError> {
         Ok(Transaction::new(
             self.executor.begin().await.context(BeginTransactionSnafu)?,
         ))
+    }
+
+    /// Removes every object in the public schema and recreates an empty schema.
+    ///
+    /// This is intentionally exposed only as an explicit administrative primitive;
+    /// normal application startup and migrations never call it.
+    pub async fn reset_public_schema(&self) -> Result<(), DatabaseError> {
+        sqlx::raw_sql("drop schema public cascade; create schema public;")
+            .execute(&self.executor)
+            .await
+            .context(InternalSnafu)?;
+
+        Ok(())
     }
 }
 

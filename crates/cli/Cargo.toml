@@ -1,0 +1,10 @@
+[package]
+name = "acebau-cli"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+acebau-database = { workspace = true }
+clap = { workspace = true, features = ["env"] }
+tokio = { workspace = true, features = ["macros", "process", "rt-multi-thread"] }
+url = { workspace = true }

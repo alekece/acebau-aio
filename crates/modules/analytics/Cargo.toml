@@ -1,0 +1,9 @@
+[package]
+name = "acebau-analytics"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+acebau-database = { workspace = true }
+async-graphql = { workspace = true }
+sqlx = { workspace = true }

@@ -1,0 +1,10 @@
+[package]
+name = "acebau-config"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+clap = { workspace = true, features = ["env"] }
+clap-config-fallback = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+url = { workspace = true }

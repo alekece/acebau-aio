@@ -1,0 +1,14 @@
+[package]
+name = "acebau-recipe"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+acebau-catalogue = { workspace = true }
+acebau-database = { workspace = true }
+acebau-inventory = { workspace = true }
+acebau-part = { workspace = true }
+async-graphql = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+sqlx = { workspace = true, features = ["uuid"] }
+uuid = { workspace = true, features = ["serde"] }

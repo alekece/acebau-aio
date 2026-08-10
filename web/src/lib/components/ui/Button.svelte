@@ -1,19 +1,34 @@
 <script lang="ts">
-	import { presetGroups, Variant } from '$lib/types';
-	import { consumeExclusiveGroups } from '$lib/utils/exclusive';
+	import type { Snippet } from 'svelte';
+	import type { HTMLButtonAttributes } from 'svelte/elements';
 
-	let props = $props();
+	type Size = 'sm' | 'base' | 'lg';
+	type Variant = 'filled' | 'tonal' | 'outlined';
+	type Tone = 'primary' | 'secondary' | 'tertiary' | 'success' | 'warning' | 'error' | 'surface';
+	type Props = Omit<HTMLButtonAttributes, 'class'> & {
+		children: Snippet;
+		class?: string;
+		size?: Size;
+		variant?: Variant;
+		tone?: Tone;
+	};
 
 	let {
-		normalizedProps: { size, variant, tone },
-		rest: { disabled, class: ClassValue, children, ...rest }
-	} = $derived.by(() => consumeExclusiveGroups('Button', props, presetGroups));
+		children,
+		class: className = '',
+		size = 'base',
+		variant = 'filled',
+		tone,
+		type = 'button',
+		onclick,
+		...rest
+	}: Props = $props();
 
 	let preset = $derived(
-		`preset-${variant}${tone ? (variant == Variant.Tonal ? `-${tone}` : `-${tone}-500`) : ''}`
+		`preset-${variant}${tone ? (variant === 'tonal' ? `-${tone}` : `-${tone}-500`) : ''}`
 	);
 </script>
 
-<button type="button" class="btn btn-{size} {preset} {rest.class}" {disabled} {...rest}>
+<button {type} {onclick} class="btn btn-{size} {preset} {className}" {...rest}>
 	{@render children()}
 </button>

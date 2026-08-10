@@ -10,6 +10,9 @@ pub enum TimeUnit {
     #[strum(serialize = "d")]
     #[unit(symbol = "d", factor = 24.)]
     Day,
+    #[strum(serialize = "min")]
+    #[unit(symbol = "min", factor = 0.016_666_666_666_666_666)]
+    Minute,
     #[strum(serialize = "h")]
     #[unit(symbol = "h", factor = 1.)]
     #[default]

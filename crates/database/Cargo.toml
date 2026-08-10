@@ -9,7 +9,9 @@ serde = ["dep:serde", "chrono/serde", "serde_with", "uuid/serde"]
 derive = ["acebau-database-derive"]
 
 [dependencies]
+acebau-core = { workspace = true }
 acebau-database-derive = { workspace = true, optional = true }
+acebau-unit = { workspace = true, features = ["sqlx"] }
 chrono = { workspace = true }
 derive_more = { workspace = true, features = [
     "deref",
@@ -24,6 +26,7 @@ uuid = { workspace = true, features = ["v4"] }
 url = { workspace = true }
 sqlx = { workspace = true, features = ["chrono", "uuid"] }
 strum = { workspace = true, features = ["derive"] }
+async-graphql = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }

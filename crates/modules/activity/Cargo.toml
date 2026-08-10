@@ -1,0 +1,11 @@
+[package]
+name = "acebau-activity"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+acebau-database = { workspace = true }
+async-graphql = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+sqlx = { workspace = true, features = ["uuid"] }
+uuid = { workspace = true }

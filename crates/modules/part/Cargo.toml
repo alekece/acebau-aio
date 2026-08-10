@@ -1,0 +1,13 @@
+[package]
+name = "acebau-part"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+acebau-database = { workspace = true }
+acebau-machine = { workspace = true }
+acebau-unit = { workspace = true, features = ["serde", "sqlx", "graphql"] }
+async-graphql = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+sqlx = { workspace = true, features = ["uuid"] }
+uuid = { workspace = true, features = ["serde"] }

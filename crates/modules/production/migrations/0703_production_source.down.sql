@@ -1,0 +1,4 @@
+alter index production_task_source_variant_id_idx rename to production_task_legacy_variant_id_idx;
+alter table production_task rename constraint production_task_source_variant_id_fkey to production_task_legacy_variant_id_fkey;
+alter table production_task rename column product_quantity to legacy_quantity;
+alter table production_task rename column source_variant_id to legacy_variant_id;

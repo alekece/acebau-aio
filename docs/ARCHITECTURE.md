@@ -548,24 +548,9 @@ Destructive commands must always require clear explicit intent and must never be
 
 ## 8. Authentication
 
-Authentication is required for production usage, but it is exposed as a Cargo feature named:
+Authentication is mandatory platform infrastructure and is always compiled into the API. It is not a Cargo feature and cannot be disabled in development builds.
 
-```text
-auth
-```
-
-Development builds may omit the `auth` feature to make local iteration easier.
-
-Release builds must refuse to compile when `auth` is not enabled.
-
-Conceptually:
-
-```rust
-#[cfg(all(not(debug_assertions), not(feature = "auth")))]
-compile_error!("release builds require the `auth` feature");
-```
-
-When `auth` is enabled, the default architecture should use:
+The default architecture should use:
 
 - local user account authentication;
 - secure password hashing;
@@ -1061,8 +1046,7 @@ Frontend               SvelteKit + TypeScript
 Architecture           Modular monolith
 Module isolation       One crate per module
 Module selection       `MODULES` build variable → Cargo features + SvelteKit build config
-Authentication         `auth` Cargo feature; mandatory in release
-Development auth       Omit `auth` feature in debug builds
+Authentication         Mandatory platform crate in every build
 Deployment             Containers / deployment-agnostic
 CLI                    Rust crate in workspace
 Units                   unit + unit-derive crates

@@ -1,49 +1,75 @@
 <script lang="ts">
 	import '../app.css';
 	import type { LayoutProps } from './$types';
-	import { page } from '$app/state';
-	import Footer from '$lib/components/Footer.svelte';
+	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { AppBar } from '@skeletonlabs/skeleton-svelte';
-	import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
-	import Settings from '@lucide/svelte/icons/settings';
-	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import { Navigation } from '@skeletonlabs/skeleton-svelte';
 	import LightSwitch from '$lib/components/LightSwitch.svelte';
-	let { children }: LayoutProps = $props();
-	let activeItem = $derived(page.url.pathname);
-	let isExpanded = $state(false);
+	import Bell from '@lucide/svelte/icons/bell';
+	import Menu from '@lucide/svelte/icons/menu';
+	import { setContext } from 'svelte';
+	import { METRIC_DEFAULTS_CONTEXT } from '$lib/settings/metric-defaults';
+	let { children, data }: LayoutProps = $props();
+	let mobileNavigationOpen = $state(false);
+	setContext(METRIC_DEFAULTS_CONTEXT, () => data.metricDefaults);
 </script>
 
-<div class="flex min-h-screen flex-col">
-	<AppBar background="bg-primary-900 text-primary-contrast-900">
-		<p class="preset-typo-title">Acebau</p>
-		{#snippet trail()}
-			<LightSwitch />
-		{/snippet}
-	</AppBar>
-	<div class="flex flex-1">
-		<div class="full flex">
-			<Navigation.Rail expanded={isExpanded} background="bg-primary-800 text-primary-contrast-800">
-				{#snippet header()}
-					<Navigation.Tile labelExpanded="Dashboard" href="/">
-						<LayoutDashboard size="24" />
-					</Navigation.Tile>
-					<Navigation.Tile labelExpanded="Analytics" href="/analytics">
-						<ChartNoAxesCombined size="24" />
-					</Navigation.Tile>
-				{/snippet}
-				{#snippet tiles()}{/snippet}
-				{#snippet footer()}
-					<Navigation.Tile labelExpanded="Settings" href="/settings" title="Settings"
-						><Settings size="24" /></Navigation.Tile
-					>
-				{/snippet}
-			</Navigation.Rail>
-		</div>
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape') mobileNavigationOpen = false;
+	}}
+/>
 
-		<main class="w-full p-8">
+<div class="flex h-screen overflow-hidden">
+	{#if mobileNavigationOpen}
+		<button
+			type="button"
+			class="fixed inset-0 z-40 bg-surface-950/55 backdrop-blur-[1px] min-[851px]:hidden"
+			aria-label="Close navigation"
+			onclick={() => (mobileNavigationOpen = false)}
+		></button>
+	{/if}
+	<Sidebar open={mobileNavigationOpen} onClose={() => (mobileNavigationOpen = false)} />
+
+	<div class="flex min-h-0 min-w-0 flex-1 flex-col">
+		<header class="shrink-0">
+			<AppBar class="bg-surface-50-950 text-surface-900-100">
+				<AppBar.Toolbar
+					class="flex w-full items-center justify-between px-4 py-3 min-[851px]:justify-end min-[851px]:px-6"
+				>
+					<AppBar.Lead class="min-[851px]:hidden">
+						<button
+							type="button"
+							class="flex size-11 items-center justify-center rounded-base border border-surface-300-700 text-surface-900-100 hover:bg-surface-200-800"
+							aria-label="Open navigation"
+							aria-expanded={mobileNavigationOpen}
+							onclick={() => (mobileNavigationOpen = true)}
+						>
+							<Menu size={21} />
+						</button>
+					</AppBar.Lead>
+					<AppBar.Trail class="ml-auto flex items-center">
+						<div class="flex items-center gap-3">
+							<button
+								class="relative flex size-9 items-center justify-center rounded-full border border-surface-300-700 text-surface-900-100 transition hover:bg-surface-200-800"
+								type="button"
+								aria-label="Notifications"
+								title="Notifications"
+							>
+								<Bell size="17" />
+								<span
+									class="absolute -top-1 -right-1 flex size-4 items-center justify-center rounded-full bg-error-500 text-[0.65rem] font-bold text-error-contrast-500"
+									>3</span
+								>
+							</button>
+							<LightSwitch />
+						</div>
+					</AppBar.Trail>
+				</AppBar.Toolbar>
+			</AppBar>
+		</header>
+
+		<main class="min-w-0 flex-1 overflow-y-auto bg-surface-100 dark:bg-surface-700">
 			{@render children()}
 		</main>
 	</div>
-	<Footer />
 </div>

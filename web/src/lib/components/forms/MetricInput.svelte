@@ -1,0 +1,73 @@
+<script lang="ts">
+	import { getMetricDefaults, type MetricKind } from '$lib/settings/metric-defaults';
+
+	export type MetricUnit = { value: string; label: string };
+
+	let {
+		label,
+		value = $bindable(0),
+		unit = $bindable(''),
+		units,
+		kind,
+		defaultUnit,
+		hint = '',
+		min = 0,
+		step = 'any',
+		required = false
+	}: {
+		label: string;
+		value?: number;
+		unit?: string;
+		units: MetricUnit[];
+		kind?: MetricKind;
+		defaultUnit?: string;
+		hint?: string;
+		min?: number;
+		step?: number | 'any';
+		required?: boolean;
+	} = $props();
+
+	const metricDefaults = getMetricDefaults();
+
+	let resolvedUnit = $derived.by(() => {
+		const preferred = defaultUnit ?? (kind ? metricDefaults()[kind] : undefined);
+		if (units.some((candidate) => candidate.value === unit)) return unit;
+		return preferred && units.some((candidate) => candidate.value === preferred)
+			? preferred
+			: (units[0]?.value ?? '');
+	});
+
+	$effect(() => {
+		if (unit !== resolvedUnit) unit = resolvedUnit;
+	});
+
+	function updateUnit(event: Event) {
+		unit = (event.currentTarget as HTMLSelectElement).value;
+	}
+</script>
+
+<label class="label">
+	<span>{label}</span>
+	<div
+		class="grid grid-cols-[minmax(0,1fr)_minmax(6.5rem,auto)] rounded-base shadow-sm focus-within:ring-2 focus-within:ring-tertiary-500/20"
+	>
+		<input
+			class="input min-h-[42px] !rounded-r-none border border-surface-300-700 bg-surface-50-950 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:border-tertiary-500 focus:ring-0"
+			type="number"
+			{min}
+			{step}
+			{required}
+			bind:value
+		/>
+		<select
+			class="select min-h-[42px] !rounded-l-none border !border-l-0 border-surface-300-700 bg-surface-100-900 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:border-tertiary-500 focus:ring-0"
+			aria-label={`Unité pour ${label}`}
+			value={resolvedUnit}
+			onchange={updateUnit}
+		>
+			{#each units as option (option.value)}<option value={option.value}>{option.label}</option
+				>{/each}
+		</select>
+	</div>
+	{#if hint}<small class="text-xs font-normal text-surface-700-300">{hint}</small>{/if}
+</label>

@@ -193,7 +193,14 @@ mod sqlx {
         U: Unit,
     {
         fn encode_by_ref(&self, buf: &mut <Postgres as Database>::ArgumentBuffer<'_>) -> Result<IsNull, BoxDynError> {
-            <f32 as Encode<'_, Postgres>>::encode_by_ref(&self.canonicalize().numerator.value(), buf)
+            let value: ::sqlx::types::BigDecimal = self
+                .canonicalize()
+                .numerator
+                .value()
+                .to_string()
+                .parse()
+                .map_err(|error| -> BoxDynError { Box::new(error) })?;
+            <::sqlx::types::BigDecimal as Encode<'_, Postgres>>::encode_by_ref(&value, buf)
         }
     }
 
@@ -203,10 +210,73 @@ mod sqlx {
         U: Unit,
     {
         fn decode(value: <Postgres as Database>::ValueRef<'_>) -> Result<Self, BoxDynError> {
+            let value = <::sqlx::types::BigDecimal as Decode<'_, Postgres>>::decode(value)?
+                .to_string()
+                .parse::<f32>()?;
             Ok(Self::new(
-                Metric::with_unit(<f32 as Decode<'_, Postgres>>::decode(value)?, T::default()),
+                Metric::with_unit(value, T::default()),
                 Metric::with_unit(1.0, U::default()),
             ))
+        }
+    }
+}
+
+#[cfg(feature = "graphql")]
+mod graphql {
+    use std::{borrow::Cow, str::FromStr};
+
+    use async_graphql::{
+        ContextSelectionSet, InputType, InputValueError, InputValueResult, OutputType, Positioned, ServerResult, Value,
+        parser::types::Field, registry::Registry,
+    };
+
+    use super::*;
+
+    impl<T, U> InputType for Ratio<T, U>
+    where
+        T: Unit + Send + Sync,
+        U: Unit + Send + Sync,
+        Ratio<T, U>: FromStr<Err = MetricError>,
+    {
+        type RawValueType = Self;
+
+        fn type_name() -> Cow<'static, str> {
+            "String".into()
+        }
+
+        fn create_type_info(registry: &mut Registry) -> String {
+            <String as InputType>::create_type_info(registry)
+        }
+
+        fn parse(value: Option<Value>) -> InputValueResult<Self> {
+            let value = String::parse(value).map_err(|_| InputValueError::custom("expected a string"))?;
+            value.parse().map_err(InputValueError::custom)
+        }
+
+        fn to_value(&self) -> Value {
+            self.to_string().into()
+        }
+
+        fn as_raw_value(&self) -> Option<&Self::RawValueType> {
+            Some(self)
+        }
+    }
+
+    impl<T, U> OutputType for Ratio<T, U>
+    where
+        T: Unit + Send + Sync,
+        U: Unit + Send + Sync,
+    {
+        fn type_name() -> Cow<'static, str> {
+            "String".into()
+        }
+
+        fn create_type_info(registry: &mut Registry) -> String {
+            <String as OutputType>::create_type_info(registry)
+        }
+
+        async fn resolve(&self, _: &ContextSelectionSet<'_>, _: &Positioned<Field>) -> ServerResult<Value> {
+            Ok(Value::String(self.to_string()))
         }
     }
 }

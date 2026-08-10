@@ -16,9 +16,22 @@ where
     async fn create_table(&mut self) -> Result<(), RepositoryError> {
         sqlx::query(
             r#"
+                do $$
+                begin
+                    create type status as enum ('active', 'draft', 'archived');
+                exception
+                    when duplicate_object then null;
+                end $$;
+            "#,
+        )
+        .execute(self.executor())
+        .await?;
+
+        sqlx::query(
+            r#"
                 create table if not exists dummies (
                     id uuid primary key default gen_random_uuid(),
-                    status status not null,
+                    status status not null default 'active',
                     name text not null unique,
                     age int not null,
                     created_at timestamptz not null default now(),
@@ -61,6 +74,7 @@ pub async fn with_setup<T>(
     test: impl AsyncFnOnce(&mut DatabaseHandle<sqlx::PgPool>) -> Result<(), Box<dyn std::error::Error>>,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
+    T: async_graphql::ObjectType + async_graphql::TypeName,
     DatabaseHandle<sqlx::PgPool>: Repository<T>,
 {
     let mut database = DatabaseHandle::new(pool);

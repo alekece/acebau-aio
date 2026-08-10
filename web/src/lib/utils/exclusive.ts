@@ -38,13 +38,15 @@ function normalizeExclusiveGroup<T>(
 	return value as T;
 }
 
-export function consumeExclusiveGroups<Specs extends Record<string, ExclusiveGroup<any>>>(
+export function consumeExclusiveGroups<Specs extends Record<string, ExclusiveGroup<unknown>>>(
 	component: string,
 	props: Record<string, unknown>,
 	specs: Specs
 ): {
-	normalizedProps: { [K in keyof Specs]: Specs[K]['fallback'] };
-	rest: Record<string, any>;
+	normalizedProps: {
+		[K in keyof Specs]: Specs[K] extends ExclusiveGroup<infer Value> ? Value | undefined : never;
+	};
+	rest: Record<string, unknown>;
 } {
 	const normalizedProps: Record<string, unknown> = {};
 	const excludedProps = new Set<string>();
@@ -52,7 +54,12 @@ export function consumeExclusiveGroups<Specs extends Record<string, ExclusiveGro
 	for (const groupName in specs) {
 		const exclusiveGroup = specs[groupName];
 
-		normalizedProps[groupName] = normalizeExclusiveGroup(component, groupName, exclusiveGroup, props);
+		normalizedProps[groupName] = normalizeExclusiveGroup(
+			component,
+			groupName,
+			exclusiveGroup,
+			props
+		);
 		exclusiveGroup.candidates.forEach(([name]) => excludedProps.add(name));
 	}
 
@@ -60,5 +67,10 @@ export function consumeExclusiveGroups<Specs extends Record<string, ExclusiveGro
 	for (const [k, v] of Object.entries(props)) {
 		if (!excludedProps.has(k)) rest[k] = v;
 	}
-	return { normalizedProps: normalizedProps as any, rest };
+	return {
+		normalizedProps: normalizedProps as {
+			[K in keyof Specs]: Specs[K] extends ExclusiveGroup<infer Value> ? Value | undefined : never;
+		},
+		rest
+	};
 }
