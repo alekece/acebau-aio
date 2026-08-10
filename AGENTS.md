@@ -6,8 +6,8 @@ This repository is developed with the assistance of AI coding agents.
 
 Before making changes, read:
 
-- `SPECIFICATIONS.md` for product and functional requirements.
-- `ARCHITECTURE.md` for technical and architectural decisions.
+- `docs/SPECIFICATION.md` for product and functional requirements.
+- `docs/ARCHITECTURE.md` for technical and architectural decisions.
 
 Do not duplicate or reinterpret those documents here. They are the sources of truth.
 
@@ -61,15 +61,15 @@ Ask for clarification instead.
 
 For minor implementation details that do not affect those areas, use reasonable engineering judgment and stay consistent with the existing codebase.
 
-If `SPECIFICATIONS.md`, `ARCHITECTURE.md`, the existing implementation, and the current task conflict, surface the conflict instead of silently choosing one.
+If `docs/SPECIFICATION.md`, `docs/ARCHITECTURE.md`, the existing implementation, and the current task conflict, surface the conflict instead of silently choosing one.
 
 The current explicit task takes precedence when it intentionally changes an existing requirement or architectural decision.
 
 ## Documentation
 
-Do not change `SPECIFICATIONS.md` merely to make it match an implementation shortcut.
+Do not change `docs/SPECIFICATION.md` merely to make it match an implementation shortcut.
 
-Update `ARCHITECTURE.md` when an architectural decision is intentionally changed.
+Update `docs/ARCHITECTURE.md` when an architectural decision is intentionally changed.
 
 If implementation reveals that either document is outdated or inconsistent, report it.
 
