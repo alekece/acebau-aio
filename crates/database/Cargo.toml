@@ -9,7 +9,6 @@ serde = ["dep:serde", "chrono/serde", "serde_with", "uuid/serde"]
 derive = ["acebau-database-derive"]
 
 [dependencies]
-acebau-unit = { workspace = true, features = ["sqlx", "serde"] }
 acebau-database-derive = { workspace = true, optional = true }
 chrono = { workspace = true }
 derive_more = { workspace = true, features = [

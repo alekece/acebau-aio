@@ -7,7 +7,6 @@
 	import ChartNoAxesCombined from '@lucide/svelte/icons/chart-no-axes-combined';
 	import Settings from '@lucide/svelte/icons/settings';
 	import LayoutDashboard from '@lucide/svelte/icons/layout-dashboard';
-	import Factory from '@lucide/svelte/icons/factory';
 	import { Navigation } from '@skeletonlabs/skeleton-svelte';
 	import LightSwitch from '$lib/components/LightSwitch.svelte';
 	let { children }: LayoutProps = $props();
@@ -28,9 +27,6 @@
 				{#snippet header()}
 					<Navigation.Tile labelExpanded="Dashboard" href="/">
 						<LayoutDashboard size="24" />
-					</Navigation.Tile>
-					<Navigation.Tile labelExpanded="Printing Environment" href="/printing_environments">
-						<Factory size="24" />
 					</Navigation.Tile>
 					<Navigation.Tile labelExpanded="Analytics" href="/analytics">
 						<ChartNoAxesCombined size="24" />
