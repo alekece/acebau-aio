@@ -16,7 +16,7 @@ struct Cli {
     host: String,
     #[arg(short, long, env = "SERVER_PORT")]
     port: u16,
-    #[arg(long, default_value = "config.toml")]
+    #[arg(long)]
     #[config(path, format = "toml")]
     config_path: Option<PathBuf>,
 }

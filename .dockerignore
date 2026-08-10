@@ -1,0 +1,16 @@
+.git
+.env
+.env.*
+!.env.example
+target
+node_modules
+web/node_modules
+web/.svelte-kit
+web/build
+debug
+.idea
+.vscode
+*.rs.bk
+*.pdb
+.DS_Store
+Thumbs.db
