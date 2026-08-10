@@ -1,16 +1,14 @@
-use std::str::FromStr;
+use strum::{Display, EnumString};
 
-use derive_more::Display;
+use super::{Metric, Unit};
 
-use super::{Metric, Unit, UnitError};
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Display)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display)]
 pub enum LengthUnit {
-    #[display("m")]
+    #[strum(serialize = "m")]
     Meter,
-    #[display("cm")]
+    #[strum(serialize = "cm")]
     Centimeter,
-    #[display("mm")]
+    #[strum(serialize = "mm")]
     #[default]
     Millimeter,
 }
@@ -18,7 +16,7 @@ pub enum LengthUnit {
 impl Unit for LengthUnit {
     fn factor(&self) -> f32 {
         match self {
-            LengthUnit::Meter => 100.,
+            LengthUnit::Meter => 1000.,
             LengthUnit::Centimeter => 10.,
             LengthUnit::Millimeter => 1.,
         }
@@ -50,18 +48,5 @@ impl Length {
 
     pub fn to_meters(self) -> Self {
         self.convert_to(LengthUnit::Meter)
-    }
-}
-
-impl FromStr for LengthUnit {
-    type Err = UnitError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "m" => Ok(LengthUnit::Meter),
-            "cm" => Ok(LengthUnit::Centimeter),
-            "mm" => Ok(LengthUnit::Millimeter),
-            _ => Err(UnitError::Unknown { unit: s.to_string() }),
-        }
     }
 }

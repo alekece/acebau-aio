@@ -19,7 +19,6 @@ create table material_providers
     bundle_size numeric not null,
     unit_price numeric not null,
     bulk_price numeric,
-    bulk_min_quantity integer,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()
 );

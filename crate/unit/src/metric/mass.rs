@@ -1,55 +1,39 @@
-use std::str::FromStr;
+use strum::{Display, EnumString};
 
-use derive_more::{Display};
+use super::{Metric, Unit};
 
-use super::{Metric, Unit, UnitError};
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Display)]
-pub enum MassUnit {
-    #[display("kg")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display)]
+pub enum Mass {
+    #[strum(serialize = "kg")]
     Kilogram,
-    #[display("g")]
+    #[strum(serialize = "g")]
     #[default]
     Gram,
 }
 
-impl Unit for MassUnit {
+impl Unit for Mass {
     fn factor(&self) -> f32 {
         match self {
-            MassUnit::Kilogram => 1000.,
-            MassUnit::Gram => 1.,
+            Self::Kilogram => 1000.,
+            Self::Gram => 1.,
         }
     }
 }
 
-pub type Mass = Metric<MassUnit>;
-
-impl Mass {
+impl Metric<Mass> {
     pub fn from_kilograms(value: f32) -> Self {
-        Self::with_unit(value, MassUnit::Kilogram)
+        Self::with_unit(value, Mass::Kilogram)
     }
 
     pub fn from_grams(value: f32) -> Self {
-        Self::with_unit(value, MassUnit::Gram)
+        Self::with_unit(value, Mass::Gram)
     }
 
     pub fn to_kilograms(self) -> Self {
-        self.convert_to(MassUnit::Kilogram)
+        self.convert_to(Mass::Kilogram)
     }
 
     pub fn to_grams(self) -> Self {
-        self.convert_to(MassUnit::Gram)
-    }
-}
-
-impl FromStr for MassUnit {
-    type Err = UnitError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "kg" => Ok(MassUnit::Kilogram),
-            "g" => Ok(MassUnit::Gram),
-            _ => Err(UnitError::Unknown { unit: s.to_string() }),
-        }
+        self.convert_to(Mass::Gram)
     }
 }

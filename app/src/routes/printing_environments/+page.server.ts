@@ -1,9 +1,7 @@
 import type { PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ params }) => {
-    const res = await fetch('http://localhost:8080/printing_environments');
-    const items = await res.json();
+	const res = await fetch('http://localhost:8080/printing_environments');
 
-    console.log(items);
-    return { items: items };
+	return { items: await res.json() };
 };

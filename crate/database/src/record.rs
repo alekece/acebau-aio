@@ -3,7 +3,7 @@ use derive_more::{Deref, DerefMut};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::types::Status;
+use crate::{types::Status};
 
 /// `Record` struct represents a database record of a specific type `T` with metadata attached to it.
 #[derive(Debug, Clone, FromRow, Deref, DerefMut)]

@@ -5,34 +5,37 @@ pub mod price;
 pub mod time;
 
 use std::{
+    num::ParseFloatError,
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
     str::FromStr,
 };
 
 use derive_more::Display;
-use snafu::Snafu;
+use snafu::{ResultExt, Snafu};
 
 use crate::{
     ratio::Ratio,
-    unit::{Unit, UnitError, Unitless},
+    unit::{Unit, Unitless},
 };
 
 pub use crate::metric::{
-    energy::{Energy, EnergyUnit},
-    length::{Length, LengthUnit},
-    mass::{Mass, MassUnit},
-    price::{Price, PriceUnit},
-    time::{Time, TimeUnit},
+    energy::Energy,
+    length::Length,
+    mass::Mass,
+    price::Price,
+    time::Time,
 };
 
 #[derive(Debug, Snafu, PartialEq, Eq)]
 pub enum MetricError {
-    #[snafu(display("Unit error: '{source}'"))]
-    UnitError { source: UnitError },
-    #[snafu(display("Value must be a floating point number, got '{value}'"))]
-    NotANumber { value: String },
-    #[snafu(display("Invalid format, expected '<value><unit>', got '{input}'"))]
-    InvalidFormat { input: String },
+    #[snafu(display("unexpected '{unit}' unit for unitless metric"))]
+    UnexpectedUnit { unit: String },
+    #[snafu(display("unknown unit '{unit}'"))]
+    UnknownUnit { unit: String },
+    #[snafu(display("invalid number '{input}': '{source}'"))]
+    NotANumber { input: String, source: ParseFloatError },
+    #[snafu(display("invalid format, expected '{format}', got '{input}'"))]
+    InvalidFormat { input: String, format: &'static str },
 }
 
 #[derive(Debug, Copy, Clone, Display)]
@@ -47,7 +50,7 @@ impl<T: Unit> Metric<T> {
         Self { value, unit }
     }
 
-    pub fn get(&self) -> f32 {
+    pub fn value(&self) -> f32 {
         self.value
     }
 
@@ -88,6 +91,7 @@ impl<T: Unit> AddAssign for Metric<T> {
         self.value.add_assign(other.convert_to(self.unit).value);
     }
 }
+
 impl<T: Unit> Sub for Metric<T> {
     type Output = Self;
 
@@ -140,7 +144,7 @@ impl<T: Unit, U: Unit> Div<Metric<U>> for Metric<T> {
     type Output = Ratio<T, U>;
 
     fn div(self, other: Metric<U>) -> Self::Output {
-        Ratio::new(self.value / other.value, self.unit, other.unit)
+        Ratio::new(self, other)
     }
 }
 
@@ -150,40 +154,73 @@ impl<T: Unit> PartialEq for Metric<T> {
     }
 }
 
+impl<T: Unit> Eq for Metric<T> {}
+
+fn split_metric(s: &str) -> (&str, &str) {
+    let index = s
+        .chars()
+        .enumerate()
+        .find(|(_, c)| !(c.is_numeric() || *c == '.' || *c == ' '))
+        .map(|(i, _)| i)
+        .unwrap_or(s.len());
+
+    (s[..index].trim(), s[index..].trim())
+}
+
 impl<T> FromStr for Metric<T>
 where
-    T: Unit + FromStr<Err = UnitError>,
+    T: Unit + FromStr,
 {
     type Err = MetricError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let index = s
-            .chars()
-            .enumerate()
-            .find(|(_, c)| !(c.is_numeric() || *c == '.' || *c == ' '))
-            .map(|(i, _)| i)
-            .unwrap_or_default();
+        let (value, unit) = split_metric(s);
 
-        let value = s[..index].trim();
-        let unit = s[index..].trim();
-
-        if value.is_empty() {
-            return Err(MetricError::InvalidFormat { input: s.to_string() });
+        if value.is_empty() || unit.is_empty() {
+            return Err(MetricError::InvalidFormat {
+                input: s.to_string(),
+                format: "<value><unit>",
+            });
         }
 
-        let value = value.parse::<f32>().map_err(|_| MetricError::NotANumber {
-            value: value.to_string(),
+        let value = value.parse::<f32>().context(NotANumberSnafu {
+            input: value.to_string(),
         })?;
 
-        let unit = T::from_str(unit).map_err(|e| MetricError::UnitError { source: e })?;
+        let unit = T::from_str(unit).map_err(|_| MetricError::UnknownUnit { unit: unit.to_string() })?;
 
         Ok(Self::with_unit(value, unit))
     }
 }
 
+impl<T> FromStr for Metric<Unitless<T>> {
+    type Err = MetricError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (value, unit) = split_metric(s);
+
+        if value.is_empty() {
+            return Err(MetricError::InvalidFormat {
+                input: s.to_string(),
+                format: "<value>",
+            });
+        }
+
+        if !unit.is_empty() {
+            return Err(MetricError::UnexpectedUnit { unit: unit.to_string() });
+        }
+
+        let value = value.parse::<f32>().context(NotANumberSnafu {
+            input: value.to_string(),
+        })?;
+
+        Ok(Self::new(value))
+    }
+}
+
 #[cfg(feature = "sqlx")]
 mod sqlx {
-    use ::sqlx::{Database, Decode, Encode, Postgres, Type, encode::IsNull, error::BoxDynError, postgres::PgTypeInfo};
+    use ::sqlx::{encode::IsNull, error::BoxDynError, postgres::PgTypeInfo, Database, Decode, Encode, Postgres, Type};
 
     use super::*;
 
@@ -195,7 +232,7 @@ mod sqlx {
 
     impl<T: Unit> Encode<'_, Postgres> for Metric<T> {
         fn encode_by_ref(&self, buf: &mut <Postgres as Database>::ArgumentBuffer<'_>) -> Result<IsNull, BoxDynError> {
-            <f32 as Encode<'_, Postgres>>::encode_by_ref(&self.convert_to(T::default()).value, buf)
+            <f32 as Encode<'_, Postgres>>::encode_by_ref(&self.canonicalize().value, buf)
         }
     }
 
@@ -211,7 +248,7 @@ mod sqlx {
 
 #[cfg(feature = "serde")]
 mod serde {
-    use ::serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+    use ::serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
     use super::*;
 
@@ -224,7 +261,16 @@ mod serde {
         }
     }
 
-    impl<'de, T: Unit + FromStr<Err = UnitError>> Deserialize<'de> for Metric<T> {
+    impl<'de, T: Unit + FromStr> Deserialize<'de> for Metric<T> {
+        fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            Self::from_str(&String::deserialize(deserializer)?).map_err(Error::custom)
+        }
+    }
+
+    impl<'de, T> Deserialize<'de> for Metric<Unitless<T>> {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
             D: Deserializer<'de>,
@@ -236,7 +282,9 @@ mod serde {
 
 #[cfg(test)]
 mod tests {
-    use crate::metric::Mass;
+    use assert_matches::assert_matches;
+
+    use crate::metric::{Length, Mass};
 
     use super::*;
 
@@ -249,36 +297,40 @@ mod tests {
             ("   4kg", Ok(Mass::from_kilograms(4.))),
             ("2kg     ", Ok(Mass::from_kilograms(2.))),
             ("     45      g       ", Ok(Mass::from_grams(45.))),
-            (
-                " 4..5  g",
-                Err(MetricError::NotANumber {
-                    value: "4..5".to_string(),
-                }),
-            ),
-            (
-                " 20duck",
-                Err(MetricError::UnitError {
-                    source: UnitError::Unknown {
-                        unit: "duck".to_string(),
-                    },
-                }),
-            ),
-            (
-                "   ",
-                Err(MetricError::InvalidFormat {
-                    input: "   ".to_string(),
-                }),
-            ),
-            ("", Err(MetricError::InvalidFormat { input: "".to_string() })),
-            (
-                "g45",
-                Err(MetricError::InvalidFormat {
-                    input: "g45".to_string(),
-                }),
-            ),
         ] {
             assert_eq!(s.parse::<Mass>(), expected_result);
         }
+    }
+
+    #[test]
+    fn test_metric_from_str_not_a_number() {
+        assert_matches!(" 4..5  g".parse::<Mass>(), Err(MetricError::NotANumber { .. }));
+    }
+
+    #[test]
+    fn test_metric_from_str_unknown_unit() {
+        assert_matches!("20duck".parse::<Mass>(), Err(MetricError::UnknownUnit { .. }));
+        assert_matches!("5kgg".parse::<Mass>(), Err(MetricError::UnknownUnit { .. }));
+    }
+
+    #[test]
+    fn test_metric_from_str_invalid_format() {
+        assert_matches!("g".parse::<Mass>(), Err(MetricError::InvalidFormat { .. }));
+        assert_matches!("       ".parse::<Mass>(), Err(MetricError::InvalidFormat { .. }));
+        assert_matches!("".parse::<Mass>(), Err(MetricError::InvalidFormat { .. }));
+        assert_matches!("g45".parse::<Mass>(), Err(MetricError::InvalidFormat { .. }));
+    }
+
+    #[test]
+    fn test_unitless_metric_from_str() {
+        for (s, expected_result) in [("1000", Ok(Price::new(1000.))), ("  3.12   ", Ok(Price::new(3.12)))] {
+            assert_eq!(s.parse::<Price>(), expected_result);
+        }
+    }
+
+    #[test]
+    fn test_unitless_metric_from_str_unexpected_unit() {
+        assert_matches!("20USD".parse::<Price>(), Err(MetricError::UnexpectedUnit { .. }));
     }
 
     #[test]
@@ -288,7 +340,40 @@ mod tests {
             (48., Time::from_days(2.)),
             (6., Time::from_hours(6.)),
         ] {
-            assert_eq!(expected_value, metric.canonicalize().get());
+            assert_eq!(expected_value, metric.canonicalize().value());
+        }
+    }
+
+    #[test]
+    fn test_metric_convert_to() {
+        for (unit, metric, expected_metric) in [
+            (
+                LengthUnit::Meter,
+                Length::from_millimeters(1000.),
+                Length::from_meters(1.),
+            ),
+            (
+                LengthUnit::Centimeter,
+                Length::from_millimeters(10.),
+                Length::from_centimeters(1.),
+            ),
+            (
+                LengthUnit::Millimeter,
+                Length::from_meters(1.),
+                Length::from_millimeters(1000.),
+            ),
+            (
+                LengthUnit::Millimeter,
+                Length::from_centimeters(1.),
+                Length::from_millimeters(10.),
+            ),
+            (
+                LengthUnit::Centimeter,
+                Length::from_meters(1.),
+                Length::from_centimeters(100.),
+            ),
+        ] {
+            assert_eq!(expected_metric, metric.convert_to(unit));
         }
     }
 }

@@ -1,14 +1,12 @@
-use std::str::FromStr;
+use strum::{Display, EnumString};
 
-use derive_more::Display;
+use super::{Metric, Unit};
 
-use super::{Metric, Unit, UnitError};
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Display)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display)]
 pub enum EnergyUnit {
-    #[display("kW")]
+    #[strum(serialize = "kW")]
     Kilowatt,
-    #[display("W")]
+    #[strum(serialize = "W")]
     #[default]
     Watt,
 }
@@ -39,17 +37,5 @@ impl Energy {
 
     pub fn to_watts(self) -> Self {
         self.convert_to(EnergyUnit::Watt)
-    }
-}
-
-impl FromStr for EnergyUnit {
-    type Err = UnitError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "kW" => Ok(EnergyUnit::Kilowatt),
-            "W" => Ok(EnergyUnit::Watt),
-            _ => Err(UnitError::Unknown { unit: s.to_string() }),
-        }
     }
 }

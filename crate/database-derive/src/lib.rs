@@ -20,7 +20,7 @@ struct TableOptions {
 impl TableOptions {
     fn fields(&self) -> impl Iterator<Item = &FieldOptions> {
         let Data::Struct(Fields { fields, .. }) = &self.data else {
-            unreachable!("Table can only be used with named structs");
+            unreachable!("Table can only be used with structs");
         };
 
         fields.iter()

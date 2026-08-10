@@ -1,21 +1,41 @@
 <script lang="ts">
 	import type { PageProps } from './$types';
-    import Badge from '$lib/components/ui/Badge.svelte';
-    import Sun from '@lucide/svelte/icons/sun';
+	import Badge from '$lib/components/ui/Badge.svelte';
+	import Button from '$lib/components/ui/Button.svelte';
+	import Sun from '@lucide/svelte/icons/sun';
 	import Status from '$lib/components/ui/Status.svelte';
 
 	let { data }: PageProps = $props();
 
-	console.log(data);
+    async function create_printing_environment() {
+		const response = await fetch("http://localhost:8080/printing_environments", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json"
+			},
+			body: JSON.stringify({
+				status: "active",
+				name: "New Environment",
+				operating_factor: 0.5,
+				electricity_cost: 0.15,
+			})
+		});
+
+
+		console.log(response);
+	}
 </script>
 
-<div class="flex flex-col">
+<div class="flex flex-col p-14">
 	<h1 class="preset-typo-title">Printing environment</h1>
 	<p>
 		Define the places where your printers run. Each environment has its own usage rhythm and
 		electricity rate, so your cost estimates stay realistic—whether you print in France or anywhere
 		else.
 	</p>
+
+	<Button onclick={async () => create_printing_environment()}>Add environment</Button>
+
 	<div class="table-wrap">
 		<table class="table">
 			<thead>
@@ -35,10 +55,10 @@
 						<td>{item.operating_factor}</td>
 						<td>{item.electricity_cost_per_kwh}</td>
 						<td class="text-right">
-                            <Status value={item.status} />
-                            <Status value="Drafted" />
-                            <Status value="Archived" />
-                        </td>
+							<Status value={item.status} />
+							<Status value="Drafted" />
+							<Status value="Archived" />
+						</td>
 					</tr>
 				{/each}
 			</tbody>

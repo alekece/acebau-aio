@@ -3,7 +3,7 @@ create table machine_models
     id uuid primary key default gen_random_uuid(),
     status status not null default 'draft',
     name text not null,
-    amortized_lifetime interval not null,
+    amortized_lifetime numeric not null,
     average_energy_consumption numeric not null,
     price numeric not null,
     additional_pieces numeric not null,

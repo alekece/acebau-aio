@@ -7,5 +7,5 @@ mod machine;
 pub use product::{Product, ProductVariant, ProductVariantPart};
 pub use printing_environment::PrintingEnvironment;
 pub use part::Part;
-pub use material::{Material, MaterialProvider, MaterialUnit};
+pub use material::{Material, MaterialProvider};
 pub use machine::{MachineModel, Machine};

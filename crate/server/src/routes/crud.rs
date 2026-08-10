@@ -1,4 +1,4 @@
-use acebau_database::{types::Status, Database, FetchOptions, Repository};
+use acebau_database::{entity::Entity, types::Status, Database, FetchOptions, Repository};
 use actix_web::{
     dev::HttpServiceFactory,
     web::{self, Data, Json, Path},
@@ -30,7 +30,7 @@ struct StatusResponse {
 
 pub fn scope<T>(name: &str) -> impl HttpServiceFactory + 'static
 where
-    T: Serialize + DeserializeOwned + 'static,
+    T: Entity + Serialize + DeserializeOwned + 'static,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
     <Database as Repository<T>>::Changeset: DeserializeOwned,
@@ -38,7 +38,7 @@ where
     web::scope(name)
         .route("", web::get().to(fetch_all::<T>))
         .route("/id", web::get().to(fetch::<T>))
-        .route("/", web::post().to(insert::<T>))
+        .route("", web::post().to(insert::<T>))
         .route("/id", web::patch().to(update::<T>))
         .route("/id/status", web::get().to(get_status::<T>))
         .route("/id", web::delete().to(delete::<T>))
@@ -46,7 +46,8 @@ where
 
 async fn fetch_all<T>(context: Data<AppState>) -> Result<impl Responder>
 where
-    T: Serialize,
+    T: Entity + Serialize + DeserializeOwned,
+    T::Id: Serialize + DeserializeOwned,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
@@ -61,7 +62,8 @@ where
 
 async fn fetch<T>(id: Path<Uuid>, context: Data<AppState>) -> Result<impl Responder>
 where
-    T: Serialize,
+    T: Entity + Serialize,
+    T::Id: Serialize,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
@@ -73,7 +75,8 @@ where
 
 async fn delete<T>(id: Path<Uuid>, context: Data<AppState>) -> Result<impl Responder>
 where
-    T: Serialize,
+    T: Entity + Serialize,
+    T::Id: Serialize,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
@@ -85,7 +88,8 @@ where
 
 async fn get_status<T>(id: Path<Uuid>, context: Data<AppState>) -> Result<impl Responder>
 where
-    T: Serialize,
+    T: Entity + Serialize,
+    T::Id: Serialize,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
@@ -101,7 +105,8 @@ async fn update<T>(
     context: Data<AppState>,
 ) -> Result<impl Responder>
 where
-    T: Serialize,
+    T: Entity + Serialize,
+    T::Id: Serialize,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {
@@ -115,7 +120,8 @@ where
 
 async fn insert<T>(data: Json<InsertRequest<T>>, context: Data<AppState>) -> Result<impl Responder>
 where
-    T: Serialize,
+    T: Entity + Serialize,
+    T::Id: Serialize,
     Database: Repository<T>,
     <Database as Repository<T>>::Error: ToString,
 {

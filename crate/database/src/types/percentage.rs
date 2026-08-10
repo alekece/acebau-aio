@@ -20,7 +20,7 @@ impl Percentage {
     }
 
     /// Get the raw normalized value (0.0 to 1.0).
-    pub fn to_normalize(&self) -> f32 {
+    pub fn normalize(&self) -> f32 {
         self.0
     }
 

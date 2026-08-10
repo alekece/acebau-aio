@@ -1,60 +1,58 @@
-use core::num;
 use std::{
     ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
     str::FromStr,
 };
 
-use ::serde::de::{self, value};
 use derive_more::Display;
-use snafu::Snafu;
 
 use crate::{
     metric::{Metric, MetricError},
-    unit::{Unit, UnitError},
+    unit::Unit,
 };
 
-#[derive(Debug, Snafu, PartialEq, Eq)]
-pub enum RatioError {
-    #[snafu(display("Invalid format, expected <metric>/<unit>, got '{input}'"))]
-    InvalidFormat { input: String },
-    #[snafu(display("Metric error: {source}"))]
-    MetricError { source: MetricError },
-    #[snafu(display("Unit error: {source}"))]
-    UnitError { source: UnitError },
-}
-
-#[derive(Debug, Copy, Clone, Display)]
-#[display("{value}{numerator}/{denominator}")]
+#[derive(Debug, Copy, Clone, Display, PartialEq, Eq)]
+#[display("{numerator}/{denominator}")]
 pub struct Ratio<T: Unit, U: Unit> {
-    value: f32,
-    numerator: T,
-    denominator: U,
+    numerator: Metric<T>,
+    denominator: Metric<U>,
 }
 
 impl<T: Unit, U: Unit> Ratio<T, U> {
-    pub fn new(value: f32, numerator: T, denominator: U) -> Self {
+    pub fn new(numerator: Metric<T>, denominator: Metric<U>) -> Self {
         Self {
-            value,
-            numerator,
-            denominator,
+            numerator: numerator / denominator.value(),
+            denominator: Metric::with_unit(1.0, denominator.unit()),
         }
     }
 
-    pub fn convert_to(self, numerator: T, denominator: U) -> Self {
-        let numerator_scale = self.numerator.factor() / numerator.factor();
-        let denominator_scale = self.denominator.factor() / denominator.factor();
-
+    pub fn with_units(value: f32, numerator: T, denominator: U) -> Self {
         Self {
-            value: self.value * numerator_scale * denominator_scale,
-            numerator,
-            denominator,
+            numerator: Metric::with_unit(value, numerator),
+            denominator: Metric::with_unit(1.0, denominator),
         }
+    }
+
+    pub fn get(&self) -> f32 {
+        self.numerator.value()
+    }
+
+    pub fn convert_to(self, numerator: T, denominator: U) -> Self {
+        Self::new(
+            self.numerator.convert_to(numerator),
+            self.denominator.convert_to(denominator),
+        )
+    }
+
+    pub fn canonicalize(self) -> Self {
+        self.convert_to(T::default(), U::default())
     }
 }
 
 impl<T: Unit, U: Unit> AddAssign for Ratio<T, U> {
     fn add_assign(&mut self, other: Self) {
-        self.value += other.convert_to(self.numerator, self.denominator).value;
+        self.numerator += other
+            .convert_to(self.numerator.unit(), self.denominator.unit())
+            .numerator;
     }
 }
 
@@ -70,7 +68,9 @@ impl<T: Unit, U: Unit> Add for Ratio<T, U> {
 
 impl<T: Unit, U: Unit> SubAssign for Ratio<T, U> {
     fn sub_assign(&mut self, other: Self) {
-        self.value -= other.convert_to(self.numerator, self.denominator).value;
+        self.numerator -= other
+            .convert_to(self.numerator.unit(), self.denominator.unit())
+            .numerator;
     }
 }
 
@@ -88,7 +88,7 @@ impl<T: Unit, U: Unit> Mul<f32> for Ratio<T, U> {
     type Output = Self;
 
     fn mul(mut self, value: f32) -> Self::Output {
-        self.value *= value;
+        self.numerator *= value;
 
         self
     }
@@ -96,7 +96,7 @@ impl<T: Unit, U: Unit> Mul<f32> for Ratio<T, U> {
 
 impl<T: Unit, U: Unit> MulAssign<f32> for Ratio<T, U> {
     fn mul_assign(&mut self, value: f32) {
-        self.value *= value;
+        self.numerator *= value;
     }
 }
 
@@ -104,7 +104,7 @@ impl<T: Unit, U: Unit> Div<f32> for Ratio<T, U> {
     type Output = Self;
 
     fn div(mut self, value: f32) -> Self::Output {
-        self.value /= value;
+        self.numerator /= value;
 
         self
     }
@@ -112,7 +112,7 @@ impl<T: Unit, U: Unit> Div<f32> for Ratio<T, U> {
 
 impl<T: Unit, U: Unit> DivAssign<f32> for Ratio<T, U> {
     fn div_assign(&mut self, value: f32) {
-        self.value /= value;
+        self.numerator /= value;
     }
 }
 
@@ -124,7 +124,10 @@ where
     type Output = Metric<T>;
 
     fn mul(self, metric: Metric<U>) -> Self::Output {
-        Metric::with_unit(self.value * metric.convert_to(self.denominator).get(), self.numerator)
+        Metric::with_unit(
+            self.numerator.value() * metric.convert_to(self.denominator.unit()).value(),
+            self.numerator.unit(),
+        )
     }
 }
 
@@ -133,8 +136,7 @@ impl<T: Unit, U: Unit, V: Unit> Mul<Ratio<U, V>> for Ratio<T, U> {
 
     fn mul(self, other: Ratio<U, V>) -> Self::Output {
         Ratio::new(
-            self.value * other.convert_to(self.denominator, other.denominator).value,
-            self.numerator,
+            self.numerator * other.numerator.convert_to(self.denominator.unit()).value(),
             other.denominator,
         )
     }
@@ -145,53 +147,40 @@ impl<T: Unit, U: Unit, V: Unit> Div<Ratio<U, V>> for Ratio<T, V> {
 
     fn div(self, other: Ratio<U, V>) -> Self::Output {
         Ratio::new(
-            self.value / other.convert_to(other.numerator, self.denominator).value,
-            self.numerator,
-            other.numerator,
+            self.numerator
+                / (other.numerator.value() * self.denominator.unit().factor() / other.denominator.unit().factor()),
+            Metric::with_unit(1.0, other.numerator.unit()),
         )
     }
 }
-
-/*
-impl<T: Unit, U: Unit, V: Unit> Div<Ratio<T, V>> for Ratio<T, U> {
-    type Output = Ratio<V, U>;
-
-    fn div(self, other: Ratio<T, V>) -> Self::Output {
-        Ratio::new(
-            self.convert_to(other.numerator, self.denominator).value / other.value,
-            other.denominator,
-            self.denominator,
-        )
-    }
-}
-*/
 
 impl<T, U> FromStr for Ratio<T, U>
 where
-    T: Unit + FromStr<Err = UnitError>,
-    U: Unit + FromStr<Err = UnitError>,
+    T: Unit,
+    U: Unit,
+    Metric<T>: FromStr<Err = MetricError>,
+    Metric<U>: FromStr<Err = MetricError>,
 {
-    type Err = RatioError;
+    type Err = MetricError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let Some((metric, unit)) = s.split_once("/") else {
-            return Err(RatioError::InvalidFormat { input: s.to_string() });
+        let Some((numerator, denominator)) = s.split_once("/") else {
+            return Err(MetricError::InvalidFormat {
+                input: s.to_string(),
+                format: "<metric>/<metric>",
+            });
         };
 
-        let metric: Metric<T> = metric.parse().map_err(|e| RatioError::MetricError { source: e })?;
-        let unit = unit.parse().map_err(|e| RatioError::UnitError { source: e })?;
-
-        Ok(Self::new(metric.get(), metric.unit(), unit))
+        Ok(Self::new(numerator.parse()?, denominator.parse()?))
     }
 }
 
 #[cfg(feature = "sqlx")]
 mod sqlx {
-    use ::sqlx::{Database, Decode, Encode, Postgres, Type, encode::IsNull, error::BoxDynError, postgres::PgTypeInfo};
+    use ::sqlx::{encode::IsNull, error::BoxDynError, postgres::PgTypeInfo, Database, Decode, Encode, Postgres, Type};
 
     use super::*;
 
-    /*
     impl<T: Unit, U: Unit> Type<Postgres> for Ratio<T, U> {
         fn type_info() -> PgTypeInfo {
             PgTypeInfo::with_name("numeric")
@@ -204,10 +193,7 @@ mod sqlx {
         U: Unit,
     {
         fn encode_by_ref(&self, buf: &mut <Postgres as Database>::ArgumentBuffer<'_>) -> Result<IsNull, BoxDynError> {
-            <f32 as Encode<'_, Postgres>>::encode_by_ref(
-                &f32::from(self.metric.convert_to(T::default()) * U::default().factor() / self.unit.factor()),
-                buf,
-            )
+            <f32 as Encode<'_, Postgres>>::encode_by_ref(&self.canonicalize().numerator.value(), buf)
         }
     }
 
@@ -215,22 +201,19 @@ mod sqlx {
     where
         T: Unit,
         U: Unit,
-        Ratio<T, U>: From<f32>,
     {
         fn decode(value: <Postgres as Database>::ValueRef<'_>) -> Result<Self, BoxDynError> {
-            Ok(Self {
-                metric: Metric::with_unit(<f32 as Decode<'_, Postgres>>::decode(value)?, T::default()),
-                unit: U::default(),
-            })
+            Ok(Self::new(
+                Metric::with_unit(<f32 as Decode<'_, Postgres>>::decode(value)?, T::default()),
+                Metric::with_unit(1.0, U::default()),
+            ))
         }
     }
-
-    */
 }
 
 #[cfg(feature = "serde")]
 mod serde {
-    use ::serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
+    use ::serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 
     use super::*;
 
@@ -249,8 +232,9 @@ mod serde {
 
     impl<'de, T, U> Deserialize<'de> for Ratio<T, U>
     where
-        T: Unit + FromStr<Err = UnitError>,
-        U: Unit + FromStr<Err = UnitError>,
+        T: Unit,
+        U: Unit,
+        Ratio<T, U>: FromStr<Err = MetricError>,
     {
         fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
         where
@@ -261,20 +245,86 @@ mod serde {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use crate::types::{Mass, TimeUnit};
+#[cfg(test)]
+mod tests {
+    use crate::metric::{Energy, Mass, Price, Time};
 
-//     use super::*;
+    use super::*;
 
-//     #[test]
-//     fn test_rate_into_f32() {
-//         let rate: Rate<Mass, TimeUnit> = Rate {
-//             value: Mass::from_kilograms(1.),
-//             unit: TimeUnit::Hour,
-//         };
+    #[test]
+    fn test_ratio_canonicalize() {
+        for (expected_value, ratio) in [
+            (2500.0, Ratio::new(Mass::from_kilograms(5.0), Time::from_hours(2.0))),
+            (1000.0, Ratio::new(Mass::from_kilograms(1.0), Time::from_hours(1.0))),
+            (1.0, Ratio::new(Mass::from_grams(48.0), Time::from_days(2.0))),
+            (2.0, Ratio::new(Mass::from_kilograms(17.520), Time::from_years(1.0))),
+        ] {
+            assert_eq!(expected_value, ratio.canonicalize().get());
+        }
+    }
 
-//         let value: f32 = rate.into();
-//         assert_eq!(value, 1000.0);
-//     }
-// }
+    #[test]
+    fn test_ratio_add() {
+        let mut ratio = Ratio::new(Mass::from_kilograms(1.0), Time::from_hours(1.0));
+
+        ratio += Ratio::new(Mass::from_grams(250.0), Time::from_hours(2.0));
+
+        assert_eq!(1.125, ratio.get());
+    }
+
+    #[test]
+    fn test_ratio_sub() {
+        let mut ratio = Ratio::new(Mass::from_kilograms(1.0), Time::from_days(1.0));
+
+        ratio -= Ratio::new(Mass::from_grams(10.0), Time::from_hours(1.0));
+
+        assert_eq!(0.760, ratio.get());
+    }
+
+    #[test]
+    fn test_ratio_mul_by_scalar() {
+        let mut ratio = Ratio::new(Mass::from_kilograms(1.0), Time::from_hours(1.0));
+
+        ratio *= 2.5;
+
+        assert_eq!(2.5, ratio.get());
+    }
+
+    #[test]
+    fn test_ratio_div_by_scalar() {
+        let mut ratio = Ratio::new(Mass::from_kilograms(5.0), Time::from_hours(1.0));
+
+        ratio /= 2.0;
+
+        assert_eq!(2.5, ratio.get());
+    }
+
+    #[test]
+    fn test_ratio_mul_by_metric() {
+        let ratio = Ratio::new(Mass::from_kilograms(2.0), Time::from_hours(1.0));
+
+        let metric = ratio * Time::from_hours(3.0);
+
+        assert_eq!(Mass::from_kilograms(6.0), metric);
+    }
+
+    #[test]
+    fn test_ratio_mul() {
+        let price_per_energy = Ratio::new(Price::new(5.0), Energy::from_kilowatts(1.0));
+        let energy_per_time = Ratio::new(Energy::from_watts(500.0), Time::from_hours(1.0));
+
+        let price_per_time = price_per_energy * energy_per_time;
+
+        assert_eq!(2.5, price_per_time.get());
+    }
+
+    #[test]
+    fn test_ratio_div() {
+        let price_per_time = Ratio::new(Price::new(120.0), Time::from_days(2.0));
+        let energy_per_time = Ratio::new(Energy::from_watts(100.0), Time::from_hours(1.0));
+
+        let price_per_energy = price_per_time / energy_per_time;
+
+        assert_eq!(0.025, price_per_energy.get());
+    }
+}

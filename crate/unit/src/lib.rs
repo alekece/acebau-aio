@@ -4,13 +4,9 @@ pub mod metric;
 pub mod ratio;
 pub mod unit;
 
-pub use metric::{
-    Metric, MetricError,
-    energy::{Energy, EnergyUnit},
-    length::{Length, LengthUnit},
-    mass::{Mass, MassUnit},
-    price::{Price, PriceUnit},
-    time::{Time, TimeUnit},
-};
-
+pub use metric::{Energy, Length, Mass, Metric, MetricError, Price, Time};
 pub use ratio::Ratio;
+
+pub type PricePerTime = Ratio<Price, Time>;
+pub type PricePerEnergy = Ratio<Price, Energy>;
+pub type EnergyPerTime = Ratio<Energy, Time>;

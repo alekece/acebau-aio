@@ -1,67 +1,50 @@
-use std::str::FromStr;
+use strum::{Display, EnumString};
 
-use derive_more::{Display};
+use super::{Metric, Unit};
 
-use super::{Metric, Unit, UnitError};
-
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Display)]
-pub enum TimeUnit {
-    #[display("y")]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Display)]
+pub enum Time {
+    #[strum(serialize = "y")]
     Year,
-    #[display("d")]
+    #[strum(serialize = "d")]
     Day,
-    #[display("h")]
+    #[strum(serialize = "h")]
     #[default]
     Hour,
 }
 
-impl Unit for TimeUnit {
+impl Unit for Time {
     fn factor(&self) -> f32 {
         match self {
-            TimeUnit::Year => 8760.,
-            TimeUnit::Day => 24.,
-            TimeUnit::Hour => 1.,
+            Self::Year => 8760.,
+            Self::Day => 24.,
+            Self::Hour => 1.,
         }
     }
 }
 
-pub type Time = Metric<TimeUnit>;
-
-impl Time {
+impl Metric<Time> {
     pub fn from_years(value: f32) -> Self {
-        Self::with_unit(value, TimeUnit::Year)
+        Self::with_unit(value, Time::Year)
     }
 
     pub fn from_days(value: f32) -> Self {
-        Self::with_unit(value, TimeUnit::Day)
+        Self::with_unit(value, Time::Day)
     }
 
     pub fn from_hours(value: f32) -> Self {
-        Self::with_unit(value, TimeUnit::Hour)
+        Self::with_unit(value, Time::Hour)
     }
 
     pub fn to_years(self) -> Self {
-        self.convert_to(TimeUnit::Year)
+        self.convert_to(Time::Year)
     }
 
     pub fn to_days(self) -> Self {
-        self.convert_to(TimeUnit::Day)
+        self.convert_to(Time::Day)
     }
 
     pub fn to_hours(self) -> Self {
-        self.convert_to(TimeUnit::Hour)
-    }
-}
-
-impl FromStr for TimeUnit {
-    type Err = UnitError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "y" => Ok(TimeUnit::Year),
-            "d" => Ok(TimeUnit::Day),
-            "h" => Ok(TimeUnit::Hour),
-            _ => Err(UnitError::Unknown { unit: s.to_string() }),
-        }
+        self.convert_to(Time::Hour)
     }
 }

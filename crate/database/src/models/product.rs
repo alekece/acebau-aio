@@ -1,10 +1,8 @@
+use acebau_unit::{Length, Mass, Price};
 use sqlx::FromRow;
 use uuid::Uuid;
 
-use crate::{
-    types::{Length, Percentage, PreTaxPrice, Mass},
-    Table,
-};
+use crate::{types::Percentage, Table};
 
 #[derive(Debug, Clone, FromRow, Table)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -24,7 +22,7 @@ pub struct ProductVariant {
     pub product_id: Uuid,
     pub sku: String,
     pub display_name: Option<String>,
-    pub price_ht: PreTaxPrice,
+    pub price: Price,
     pub vat_ratio: Percentage,
     pub resale_coefficient: f32,
     pub height: Option<Length>,

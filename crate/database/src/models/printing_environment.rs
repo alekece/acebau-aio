@@ -1,3 +1,4 @@
+use acebau_unit::PricePerEnergy;
 use sqlx::FromRow;
 
 use crate::{types::Percentage, Table};
@@ -9,5 +10,5 @@ use crate::{types::Percentage, Table};
 pub struct PrintingEnvironment {
     pub name: String,
     pub operating_factor: Percentage,
-    pub electricity_cost_per_kwh: f32,
+    pub electricity_cost: PricePerEnergy,
 }

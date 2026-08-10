@@ -1,7 +1,4 @@
-use super::{Metric, Unitless};
+use crate::{metric::Metric, unit::Unitless};
 
 #[derive(Debug)]
-pub struct PriceTag;
-
-pub type PriceUnit = Unitless<PriceTag>;
-pub type Price = Metric<Unitless<PriceUnit>>;
+pub struct Price;
