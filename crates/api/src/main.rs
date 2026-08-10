@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
+use acebau_api::AppState;
 use acebau_database::Database;
-use acebau_server::AppState;
 use clap::Parser;
 use clap_config_fallback::ConfigParser;
 use tower_http::cors::{Any, CorsLayer};
@@ -12,9 +12,9 @@ use url::Url;
 struct Cli {
     #[arg(short, long, env = "DATABASE_URL")]
     database_url: Url,
-    #[arg(short, long, env = "SERVER_HOST")]
+    #[arg(short, long, env = "API_HOST")]
     host: String,
-    #[arg(short, long, env = "SERVER_PORT")]
+    #[arg(short, long, env = "API_PORT")]
     port: u16,
     #[arg(long)]
     #[config(path, format = "toml")]
@@ -36,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .allow_methods(Any)
         .allow_headers(Any)
         .max_age(std::time::Duration::from_secs(3600));
-    let router = acebau_server::router(AppState::new(database)).layer(cors);
+    let router = acebau_api::router(AppState::new(database)).layer(cors);
     let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
     axum::serve(listener, router).await?;

@@ -3,6 +3,23 @@
 version = 4
 
 [[package]]
+name = "acebau-api"
+version = "0.1.0"
+dependencies = [
+ "acebau-database",
+ "axum",
+ "clap",
+ "clap-config-fallback",
+ "serde",
+ "sqlx",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "url",
+]
+
+[[package]]
 name = "acebau-database"
 version = "0.1.0"
 dependencies = [
@@ -30,23 +47,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.117",
-]
-
-[[package]]
-name = "acebau-server"
-version = "0.1.0"
-dependencies = [
- "acebau-database",
- "axum",
- "clap",
- "clap-config-fallback",
- "serde",
- "sqlx",
- "tokio",
- "tower-http",
- "tracing",
- "tracing-subscriber",
- "url",
 ]
 
 [[package]]

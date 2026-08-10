@@ -1,28 +1,28 @@
 # syntax=docker/dockerfile:1
 
-FROM rust:1.95-bookworm AS server-builder
+FROM rust:1.95-bookworm AS api-builder
 
 WORKDIR /app
 
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
 
-RUN cargo build --locked --release --package acebau-server
+RUN cargo build --locked --release --package acebau-api
 
-FROM debian:bookworm-slim AS server
+FROM debian:bookworm-slim AS api
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends ca-certificates curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --uid 10001 acebau
 
-COPY --from=server-builder /app/target/release/acebau-server /usr/local/bin/acebau-server
+COPY --from=api-builder /app/target/release/acebau-api /usr/local/bin/acebau-api
 
 USER acebau
 
 EXPOSE 8080
 
-ENTRYPOINT ["acebau-server"]
+ENTRYPOINT ["acebau-api"]
 
 FROM node:24-bookworm-slim AS web-builder
 

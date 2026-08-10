@@ -13,7 +13,7 @@ members = [
     "crates/unit-derive",
     "crates/database",
     "crates/database-derive",
-    "crates/server",
+    "crates/api",
 ]
 resolver = "3"
 
