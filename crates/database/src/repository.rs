@@ -3,7 +3,7 @@ use std::{collections::HashSet, marker::PhantomData};
 use snafu::Snafu;
 use uuid::Uuid;
 
-use crate::{types::Status, Record};
+use crate::{Record, types::Status};
 
 #[derive(Debug, Snafu)]
 pub enum RepositoryError {
@@ -28,7 +28,7 @@ impl From<sqlx::Error> for RepositoryError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct FetchOptions {
     statuses: HashSet<Status>,
 }
@@ -51,29 +51,21 @@ impl FetchOptions {
     }
 }
 
-impl Default for FetchOptions {
-    fn default() -> Self {
-        Self {
-            statuses: HashSet::default(),
-        }
-    }
-}
-
 pub trait Repository<T> {
     type Error;
     type Changeset;
 
-    fn insert(&mut self, item: &T, status: Status) -> impl Future<Output = Result<Record<T>, Self::Error>>;
+    fn insert(&mut self, item: &T, status: Status) -> impl Future<Output = Result<Record<T>, Self::Error>> + Send;
     fn update(
         &mut self,
         id: Uuid,
         changeset: &Self::Changeset,
         status: Option<Status>,
-    ) -> impl Future<Output = Result<Record<T>, Self::Error>>;
-    fn fetch_by_id(&mut self, id: Uuid) -> impl Future<Output = Result<Record<T>, Self::Error>>;
-    fn fetch_all(&mut self, options: FetchOptions) -> impl Future<Output = Result<Vec<Record<T>>, Self::Error>>;
-    fn delete(&mut self, id: Uuid) -> impl Future<Output = Result<(), Self::Error>>;
-    fn status(&mut self, id: Uuid) -> impl Future<Output = Result<Status, Self::Error>>;
+    ) -> impl Future<Output = Result<Record<T>, Self::Error>> + Send;
+    fn fetch_by_id(&mut self, id: Uuid) -> impl Future<Output = Result<Record<T>, Self::Error>> + Send;
+    fn fetch_all(&mut self, options: FetchOptions) -> impl Future<Output = Result<Vec<Record<T>>, Self::Error>> + Send;
+    fn delete(&mut self, id: Uuid) -> impl Future<Output = Result<(), Self::Error>> + Send;
+    fn status(&mut self, id: Uuid) -> impl Future<Output = Result<Status, Self::Error>> + Send;
 }
 
 pub struct RepositoryHandle<'a, R, T> {
@@ -95,7 +87,9 @@ where
 
 impl<R, T> Repository<T> for RepositoryHandle<'_, R, T>
 where
-    R: Repository<T>,
+    R: Repository<T> + Send,
+    T: Send + Sync,
+    R::Changeset: Sync,
 {
     type Error = R::Error;
     type Changeset = R::Changeset;
@@ -136,9 +130,9 @@ mod tests {
     use uuid::Uuid;
 
     use crate::{
+        FetchOptions, Repository, RepositoryError,
         tests::{self, Dummy, DummyChangeset},
         types::Status,
-        FetchOptions, Repository, RepositoryError,
     };
 
     #[sqlx::test]
@@ -312,7 +306,6 @@ mod tests {
         .await
     }
 
-
     #[sqlx::test]
     #[ignore = "requires a running PostgreSQL instance"]
     async fn status(pool: sqlx::PgPool) -> Result<(), Box<dyn std::error::Error>> {
@@ -335,10 +328,9 @@ mod tests {
                 .update(id, &DummyChangeset::default(), Some(Status::Archived))
                 .await?;
 
-
             let status = database.repository::<Dummy>().status(id).await?;
             assert_eq!(status, Status::Archived);
-           
+
             Ok(())
         })
         .await

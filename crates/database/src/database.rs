@@ -1,8 +1,8 @@
 use snafu::{ResultExt, Snafu};
-use sqlx::{migrate::MigrateError, postgres::PgPoolOptions, PgConnection, PgPool, Postgres};
+use sqlx::{PgConnection, PgPool, Postgres, migrate::MigrateError, postgres::PgPoolOptions};
 use url::Url;
 
-use crate::{repository::RepositoryHandle, Repository};
+use crate::{Repository, repository::RepositoryHandle};
 
 #[derive(Debug, Snafu)]
 pub enum DatabaseError {

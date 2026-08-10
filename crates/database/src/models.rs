@@ -1,11 +1,11 @@
-mod product;
+mod machine;
+mod material;
 mod part;
 mod printing_environment;
-mod material;
-mod machine;
+mod product;
 
-pub use product::{Product, ProductVariant, ProductVariantPart};
-pub use printing_environment::PrintingEnvironment;
-pub use part::Part;
+pub use machine::{Machine, MachineModel};
 pub use material::{Material, MaterialProvider};
-pub use machine::{MachineModel, Machine};
+pub use part::Part;
+pub use printing_environment::PrintingEnvironment;
+pub use product::{Product, ProductVariant, ProductVariantPart};

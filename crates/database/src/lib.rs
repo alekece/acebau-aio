@@ -1,7 +1,7 @@
 #![allow(clippy::pedantic)]
 
 mod database;
-// pub mod models;
+pub mod models;
 mod record;
 mod repository;
 #[cfg(test)]

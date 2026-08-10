@@ -1,4 +1,6 @@
 use crate::{metric::Metric, unit::Unitless};
 
 #[derive(Debug)]
-pub struct Price;
+pub struct PriceUnit;
+
+pub type Price = Metric<Unitless<PriceUnit>>;

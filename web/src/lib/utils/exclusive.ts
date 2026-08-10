@@ -2,7 +2,7 @@ export type Mapper<T> = T | ((value: unknown) => T);
 type Candidate<T> = [propName: string, mapper?: Mapper<T>];
 
 export type ExclusiveGroup<T> = {
-	fallback?: T,
+	fallback?: T;
 	candidates: Candidate<T>[];
 };
 
@@ -11,7 +11,7 @@ function normalizeExclusiveGroup<T>(
 	groupName: string,
 	exclusiveGroup: ExclusiveGroup<T>,
 	props: Record<string, unknown>
-): T {
+): T | undefined {
 	const usedProp = exclusiveGroup.candidates
 		.map(([k, m]) => [k, props[k], m] as [string, unknown, Mapper<T> | undefined])
 		.filter(([, v]) => v !== undefined && v !== false);

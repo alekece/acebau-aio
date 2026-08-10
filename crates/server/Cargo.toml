@@ -21,14 +21,9 @@ chrono = { workspace = true }
 strum = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
-
-actix-web = "4.9.0"
-actix-cors = "0.7.1"
-actix-utils = "3.0.1"
-actix-service = "2.0.2"
-futures-util = "0.3.31"
-
-# actix-http = "3.9.0"
+axum = { workspace = true }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "net"] }
+tower-http = { workspace = true, features = ["cors"] }
 
 [dev-dependencies]
 sqlx = { workspace = true, features = ["postgres"] }

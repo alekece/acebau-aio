@@ -1,4 +1,4 @@
-use std::marker::PhantomData;
+use std::{fmt, marker::PhantomData};
 
 pub struct Second;
 
@@ -46,9 +46,8 @@ impl<T> PartialEq for Unitless<T> {
 
 impl<T> Eq for Unitless<T> {}
 
-impl<T> ToString for Unitless<T> {
-    /// Returns an empty string to represent the "unitless" unit.
-    fn to_string(&self) -> String {
-        String::default()
+impl<T> fmt::Display for Unitless<T> {
+    fn fmt(&self, _f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Ok(())
     }
 }

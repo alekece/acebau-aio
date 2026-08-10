@@ -1,13 +1,13 @@
 use darling::{
+    FromDeriveInput, FromField, FromMeta,
     ast::{Data, Fields},
     util::Ignored,
-    FromDeriveInput, FromField, FromMeta,
 };
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, Ident, Type};
+use syn::{DeriveInput, Ident, Type, parse_macro_input};
 
 #[derive(FromDeriveInput)]
 #[darling(attributes(table), supports(struct_named))]
@@ -106,6 +106,9 @@ pub fn derive_table(input: TokenStream) -> TokenStream {
         impl<T> crate::Repository<#ident> for crate::DatabaseHandle<T>
         where
             Self: for<'a> crate::Executor<'a>,
+            T: ::std::marker::Send,
+            #ident: ::std::marker::Sync,
+            #changeset_ident: ::std::marker::Sync,
         {
             type Error = crate::RepositoryError;
             type Changeset = #changeset_ident;

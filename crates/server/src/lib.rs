@@ -1,17 +1,17 @@
 #![allow(clippy::pedantic)]
 
 use acebau_database::{
-    models::{Material, MaterialProvider, Part, PrintingEnvironment, Product, ProductVariant, ProductVariantPart},
     Database,
+    models::{Material, MaterialProvider, Part, PrintingEnvironment, Product, ProductVariant, ProductVariantPart},
 };
-use actix_web::web::ServiceConfig;
+use axum::Router;
 
 pub mod envelope;
 pub mod routes;
 
 pub use envelope::Envelope;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AppState {
     pub database: Database,
 }
@@ -22,13 +22,15 @@ impl AppState {
     }
 }
 
-pub fn registrer_routes(config: &mut ServiceConfig) {
-    config
-        .service(routes::crud::scope::<PrintingEnvironment>("/printing_environments"))
-        .service(routes::crud::scope::<Product>("/products"))
-        .service(routes::crud::scope::<ProductVariant>("/product_variants"))
-        .service(routes::crud::scope::<ProductVariantPart>("/product_variants"))
-        .service(routes::crud::scope::<Part>("/parts"))
-        .service(routes::crud::scope::<Material>("/materials"))
-        .service(routes::crud::scope::<MaterialProvider>("/material_providers"));
+pub fn router(state: AppState) -> Router {
+    Router::new()
+        .route("/health", axum::routing::get(|| async { "ok" }))
+        .nest("/printing_environments", routes::crud::router::<PrintingEnvironment>())
+        .nest("/products", routes::crud::router::<Product>())
+        .nest("/product_variants", routes::crud::router::<ProductVariant>())
+        .nest("/product_variant_parts", routes::crud::router::<ProductVariantPart>())
+        .nest("/parts", routes::crud::router::<Part>())
+        .nest("/materials", routes::crud::router::<Material>())
+        .nest("/material_providers", routes::crud::router::<MaterialProvider>())
+        .with_state(state)
 }

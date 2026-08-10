@@ -1,7 +1,7 @@
 use acebau_unit::PricePerEnergy;
 use sqlx::FromRow;
 
-use crate::{types::Percentage, Table};
+use crate::{Table, types::Percentage};
 
 #[derive(Debug, Clone, FromRow, Table)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]

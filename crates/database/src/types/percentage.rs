@@ -1,5 +1,5 @@
-use snafu::{ensure, Snafu};
-use sqlx::{encode::IsNull, error::BoxDynError, postgres::PgTypeInfo, Database, Decode, Encode, Postgres, Type};
+use snafu::{Snafu, ensure};
+use sqlx::{Database, Decode, Encode, Postgres, Type, encode::IsNull, error::BoxDynError, postgres::PgTypeInfo};
 
 #[derive(Debug, PartialEq, Snafu)]
 pub enum PercentageError {

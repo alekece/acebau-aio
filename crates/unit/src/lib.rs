@@ -6,7 +6,8 @@ pub mod unit;
 
 pub use metric::{Energy, Length, Mass, Metric, MetricError, Price, Time};
 pub use ratio::Ratio;
+use unit::Unitless;
 
-pub type PricePerTime = Ratio<Price, Time>;
-pub type PricePerEnergy = Ratio<Price, Energy>;
-pub type EnergyPerTime = Ratio<Energy, Time>;
+pub type PricePerTime = Ratio<Unitless<metric::PriceUnit>, metric::TimeUnit>;
+pub type PricePerEnergy = Ratio<Unitless<metric::PriceUnit>, metric::EnergyUnit>;
+pub type EnergyPerTime = Ratio<metric::EnergyUnit, metric::TimeUnit>;

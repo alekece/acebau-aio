@@ -177,7 +177,7 @@ where
 
 #[cfg(feature = "sqlx")]
 mod sqlx {
-    use ::sqlx::{encode::IsNull, error::BoxDynError, postgres::PgTypeInfo, Database, Decode, Encode, Postgres, Type};
+    use ::sqlx::{Database, Decode, Encode, Postgres, Type, encode::IsNull, error::BoxDynError, postgres::PgTypeInfo};
 
     use super::*;
 
@@ -213,7 +213,7 @@ mod sqlx {
 
 #[cfg(feature = "serde")]
 mod serde {
-    use ::serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
+    use ::serde::{Deserialize, Deserializer, Serialize, Serializer, de::Error};
 
     use super::*;
 

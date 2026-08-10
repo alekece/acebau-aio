@@ -1,18 +1,14 @@
-use actix_web::{
-    body::EitherBody,
-    error::JsonPayloadError,
+use axum::{
     http::StatusCode,
-    mime,
-    web::Query,
-    HttpRequest, HttpResponse, Responder,
+    response::{IntoResponse, Response},
 };
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
-use serde_with::{formats::CommaSeparator, serde_as, StringWithSeparator};
+use serde_json::{Value, json};
+use serde_with::{StringWithSeparator, formats::CommaSeparator, serde_as};
 
 #[serde_as]
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-struct FieldMask {
+pub(crate) struct FieldMask {
     #[serde_as(as = "Option<StringWithSeparator<CommaSeparator, String>>")]
     fields: Option<Vec<String>>,
 }
@@ -61,33 +57,20 @@ impl<T> Envelope<T> {
     }
 }
 
-impl<T: Serialize> Responder for Envelope<T> {
-    type Body = EitherBody<String>;
+impl<T: Serialize> Envelope<T> {
+    pub(crate) fn into_response(self, field_mask: &FieldMask) -> Response {
+        let Ok(mut value) = serde_json::to_value(&self.data) else {
+            return StatusCode::INTERNAL_SERVER_ERROR.into_response();
+        };
 
-    fn respond_to(self, request: &HttpRequest) -> HttpResponse<Self::Body> {
-        match (
-            serde_json::to_value(&self.data),
-            Query::<FieldMask>::from_query(request.query_string()),
-        ) {
-            (Ok(mut value), Ok(field_mask)) => {
-                if !field_mask.is_empty() {
-                    field_mask.project(&mut value);
-                }
-
-                if let Value::Array(values) = value {
-                    value = json!({"items": values});
-                }
-
-                match HttpResponse::build(self.status)
-                    .content_type(mime::APPLICATION_JSON)
-                    .message_body(serde_json::to_string(&value).unwrap())
-                {
-                    Ok(response) => response.map_into_left_body(),
-                    Err(error) => HttpResponse::from_error(error).map_into_right_body(),
-                }
-            }
-            (Err(error), _) => HttpResponse::from_error(JsonPayloadError::Serialize(error)).map_into_right_body(),
-            (_, Err(error)) => HttpResponse::from_error(error).map_into_right_body(),
+        if !field_mask.is_empty() {
+            field_mask.project(&mut value);
         }
+
+        if let Value::Array(values) = value {
+            value = json!({ "items": values });
+        }
+
+        (self.status, axum::Json(value)).into_response()
     }
 }

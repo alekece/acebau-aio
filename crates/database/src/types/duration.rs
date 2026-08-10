@@ -1,10 +1,10 @@
 use derive_more::From;
 use snafu::{ResultExt, Snafu};
 use sqlx::{
+    Database, Decode, Encode, Postgres, Type,
     encode::IsNull,
     error::BoxDynError,
-    postgres::{types::PgInterval, PgTypeInfo},
-    Database, Decode, Encode, Postgres, Type,
+    postgres::{PgTypeInfo, types::PgInterval},
 };
 
 #[derive(Debug, Snafu)]

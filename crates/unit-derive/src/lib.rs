@@ -1,9 +1,9 @@
-use darling::{ast::Data, FromDeriveInput, FromVariant};
+use darling::{FromDeriveInput, FromVariant, ast::Data};
 use itertools::Itertools;
 use proc_macro::TokenStream;
 use proc_macro_error::proc_macro_error;
 use quote::{format_ident, quote};
-use syn::{parse_macro_input, DeriveInput, Ident};
+use syn::{DeriveInput, Ident, parse_macro_input};
 
 #[derive(FromDeriveInput)]
 #[darling(attributes(unit), supports(enum_any))]

@@ -9,19 +9,19 @@ description = "All-in-one Acebau toolkit for managing products, clients, bids an
 
 [workspace]
 members = [
-    "crate/unit",
-    "crate/unit-derive",
-    "crate/database",
-    "crate/database-derive",
-    "crate/server",
+    "crates/unit",
+    "crates/unit-derive",
+    "crates/database",
+    "crates/database-derive",
+    "crates/server",
 ]
 resolver = "3"
 
 [workspace.dependencies]
-acebau-unit = { path = "crate/unit" }
-acebau-unit-derive = { path = "crate/unit-derive" }
-acebau-database = { path = "crate/database" }
-acebau-database-derive = { path = "crate/database-derive" }
+acebau-unit = { path = "crates/unit" }
+acebau-unit-derive = { path = "crates/unit-derive" }
+acebau-database = { path = "crates/database" }
+acebau-database-derive = { path = "crates/database-derive" }
 chrono = "0.4.41"
 clap = { version = "4.5.41", features = ["derive"] }
 clap-config-fallback = { version = "0.1.11", features = ["derive"] }
@@ -39,3 +39,6 @@ tracing = "0.1.41"
 tracing-subscriber = "0.3.19"
 itertools = "0.14.0"
 assert_matches = "1.5.0"
+axum = "0.8.4"
+tokio = "1.47.1"
+tower-http = "0.6.6"

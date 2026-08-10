@@ -1,9 +1,10 @@
+use std::path::PathBuf;
+
 use acebau_database::Database;
 use acebau_server::AppState;
-use actix_cors::Cors;
-use actix_web::{web::Data, App, HttpServer};
 use clap::Parser;
 use clap_config_fallback::ConfigParser;
+use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{filter::EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 use url::Url;
 
@@ -20,7 +21,7 @@ struct Cli {
     config_path: Option<PathBuf>,
 }
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::registry()
         .with(fmt::layer())
@@ -29,18 +30,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let cli = Cli::parse_with_config();
     let database = Database::connect(cli.database_url).await?;
+    let bind_address = (cli.host.as_str(), cli.port);
 
-    HttpServer::new(move || {
-        let cors = Cors::default().allow_any_method().allow_any_header().max_age(3600);
+    let cors = CorsLayer::new()
+        .allow_methods(Any)
+        .allow_headers(Any)
+        .max_age(std::time::Duration::from_secs(3600));
+    let router = acebau_server::router(AppState::new(database)).layer(cors);
+    let listener = tokio::net::TcpListener::bind(bind_address).await?;
 
-        App::new()
-            .app_data(Data::new(AppState::new(database.clone())))
-            .configure(acebau_server::registrer_routes)
-            .wrap(cors)
-    })
-    .bind((cli.host, cli.port))?
-    .run()
-    .await?;
+    axum::serve(listener, router).await?;
 
     Ok(())
 }
