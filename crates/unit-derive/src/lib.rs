@@ -31,7 +31,7 @@ struct VariantOptions {
 }
 
 #[proc_macro_error]
-#[proc_macro_derive(Table, attributes(unit))]
+#[proc_macro_derive(Unit, attributes(unit))]
 pub fn derive_unit(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
 
@@ -45,7 +45,7 @@ pub fn derive_unit(input: TokenStream) -> TokenStream {
 
     let output = if variants.is_empty() {
         quote! {
-            impl ::acebau_unit::Unit for #ident {
+            impl ::acebau_unit::unit::Unit for #ident {
                 fn factor(&self) -> f32 {
                     1.
                 }
@@ -75,7 +75,7 @@ pub fn derive_unit(input: TokenStream) -> TokenStream {
                 .multiunzip();
 
         quote! {
-            impl ::acebau_unit::Unit for #ident {
+            impl ::acebau_unit::unit::Unit for #ident {
                 fn factor(&self) -> f32 {
                     match self {
                         #(

@@ -9,6 +9,7 @@ sqlx = ["dep:sqlx"]
 serde = ["dep:serde"]
 
 [dependencies]
+acebau-unit-derive = { workspace = true }
 snafu = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 sqlx = { workspace = true, optional = true }
