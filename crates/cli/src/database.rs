@@ -1,4 +1,7 @@
-use std::path::PathBuf;
+use std::{
+    error::Error,
+    path::{Path, PathBuf},
+};
 
 use acebau_database::{Database, MigrationOptions};
 use clap::{ArgGroup, Args, Subcommand};
@@ -35,15 +38,17 @@ pub(crate) struct BackupArgs {
 }
 
 impl DatabaseCommand {
-    pub(crate) async fn execute(self, database_url: Url) -> Result<(), Box<dyn std::error::Error>> {
+    pub(crate) async fn execute(self, database_url: Url) -> Result<(), Box<dyn Error>> {
+        let database = Database::connect(database_url).await?;
+
         match self {
-            Self::Setup => setup(database_url).await,
-            Self::Reset { confirm } => reset(database_url, confirm).await,
+            Self::Setup => setup(&database).await,
+            Self::Reset { confirm } => reset(&database, confirm).await,
             Self::Backup(args) => {
                 if let Some(output) = args.dump {
-                    dump(&database_url, output, args.force).await
+                    dump(&database, &output, args.force).await
                 } else if let Some(input) = args.restore {
-                    restore(&database_url, input).await
+                    restore(&database, &input).await
                 } else {
                     unreachable!()
                 }
@@ -52,9 +57,8 @@ impl DatabaseCommand {
     }
 }
 
-async fn setup(database_url: Url) -> Result<(), Box<dyn std::error::Error>> {
-    Database::connect(database_url)
-        .await?
+async fn setup(database: &Database) -> Result<(), Box<dyn Error>> {
+    database
         .migrate(
             &[
                 &acebau_database::MIGRATOR,
@@ -80,26 +84,26 @@ async fn setup(database_url: Url) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn dump(database_url: &Url, output: PathBuf, force: bool) -> Result<(), Box<dyn std::error::Error>> {
-    Database::dump(database_url, output.clone(), force).await?;
+async fn dump(database: &Database, output: &Path, force: bool) -> Result<(), Box<dyn Error>> {
+    database.dump(output, force).await?;
     println!("Backup created at {}", output.display());
 
     Ok(())
 }
 
-async fn restore(database_url: &Url, input: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    Database::restore(database_url, input.clone()).await?;
+async fn restore(database: &Database, input: &Path) -> Result<(), Box<dyn Error>> {
+    database.restore(input).await?;
     println!("Backup restored from {}", input.display());
 
     Ok(())
 }
 
-async fn reset(database_url: Url, confirm_reset: bool) -> Result<(), Box<dyn std::error::Error>> {
-    if !confirm_reset {
-        return Err("database reset refused; pass --confirm-reset to acknowledge permanent data loss".into());
+async fn reset(database: &Database, confirm: bool) -> Result<(), Box<dyn Error>> {
+    if !confirm {
+        return Err("database reset refused".into());
     }
 
-    Database::connect(database_url).await?.clear_all().await?;
+    database.clear_all().await?;
     println!("Database data cleared successfully");
 
     Ok(())

@@ -1,6 +1,6 @@
 mod database;
 
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
 
 use clap::{Parser, Subcommand};
 use clap_config_fallback::{ConfigParser, ConfigSubcommand};
@@ -29,7 +29,7 @@ enum Command {
     },
 }
 
-pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run() -> Result<(), Box<dyn Error>> {
     let cli = Cli::parse_with_config();
 
     match cli.command {

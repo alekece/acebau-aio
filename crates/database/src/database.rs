@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use snafu::{ResultExt, Snafu};
 use sqlx::{PgConnection, PgPool, Postgres, migrate::MigrateError, postgres::PgPoolOptions};
@@ -39,6 +39,7 @@ pub trait Executor<'a> {
 #[derive(Debug, Clone)]
 pub struct DatabaseHandle<T> {
     executor: T,
+    url: Option<Url>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -65,7 +66,7 @@ impl MigrationOptions {
 
 impl<T> DatabaseHandle<T> {
     pub fn new(executor: T) -> Self {
-        Self { executor }
+        Self { executor, url: None }
     }
 }
 
@@ -86,10 +87,13 @@ impl Database {
             .await
             .context(ConnectionSnafu)?;
 
-        Ok(Self::new(executor))
+        Ok(Self {
+            executor,
+            url: Some(url),
+        })
     }
 
-    pub async fn dump(url: &Url, output: PathBuf, force: bool) -> Result<(), DatabaseError> {
+    pub async fn dump(&self, output: &Path, force: bool) -> Result<(), DatabaseError> {
         if output.exists() && !force {
             return Err(DatabaseError::Dump {
                 reason: format!("target {} already exists", output.display()),
@@ -111,7 +115,7 @@ impl Database {
             .arg("--no-privileges")
             .arg("--file")
             .arg(&output)
-            .env("PGDATABASE", url.as_str())
+            .env("PGDATABASE", self.url()?.as_str())
             .status()
             .await
             .map_err(|source| DatabaseError::Dump {
@@ -127,7 +131,7 @@ impl Database {
         }
     }
 
-    pub async fn restore(url: &Url, input: PathBuf) -> Result<(), DatabaseError> {
+    pub async fn restore(&self, input: &Path) -> Result<(), DatabaseError> {
         if !input.is_file() {
             return Err(DatabaseError::Restore {
                 reason: format!("file {} does not exist", input.display()),
@@ -140,7 +144,7 @@ impl Database {
             .arg("--no-owner")
             .arg("--no-privileges")
             .arg("--dbname")
-            .arg(url.as_str())
+            .arg(self.url()?.as_str())
             .arg(&input)
             .status()
             .await
@@ -155,6 +159,12 @@ impl Database {
                 reason: format!("operation failed with {status}"),
             })
         }
+    }
+
+    fn url(&self) -> Result<&Url, DatabaseError> {
+        self.url.as_ref().ok_or_else(|| DatabaseError::Internal {
+            source: sqlx::Error::Configuration("database connection URL is unavailable".into()),
+        })
     }
 
     /// Runs each migrator in slice order with the same migration options.
