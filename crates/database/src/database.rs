@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use snafu::{ResultExt, Snafu};
 use sqlx::{PgConnection, PgPool, Postgres, migrate::MigrateError, postgres::PgPoolOptions};
+use tokio::process::Command;
 use url::Url;
 
 use crate::{Repository, repository::RepositoryHandle};
@@ -18,6 +21,10 @@ pub enum DatabaseError {
     Migration { source: MigrateError },
     #[snafu(display("database operation failed: {source}"))]
     Internal { source: sqlx::Error },
+    #[snafu(display("cannot dump database: {reason}"))]
+    Dump { reason: String },
+    #[snafu(display("cannot restore database: {reason}"))]
+    Restore { reason: String },
 }
 
 pub type Transaction<'a> = DatabaseHandle<sqlx::Transaction<'a, Postgres>>;
@@ -82,6 +89,74 @@ impl Database {
         Ok(Self::new(executor))
     }
 
+    pub async fn dump(url: &Url, output: PathBuf, force: bool) -> Result<(), DatabaseError> {
+        if output.exists() && !force {
+            return Err(DatabaseError::Dump {
+                reason: format!("target {} already exists", output.display()),
+            });
+        }
+
+        if let Some(parent) = output.parent()
+            && !parent.as_os_str().is_empty()
+            && !parent.is_dir()
+        {
+            return Err(DatabaseError::Dump {
+                reason: format!("directory {} does not exist", parent.display()),
+            });
+        }
+
+        let status = Command::new("pg_dump")
+            .arg("--format=custom")
+            .arg("--no-owner")
+            .arg("--no-privileges")
+            .arg("--file")
+            .arg(&output)
+            .env("PGDATABASE", url.as_str())
+            .status()
+            .await
+            .map_err(|source| DatabaseError::Dump {
+                reason: source.to_string(),
+            })?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err(DatabaseError::Dump {
+                reason: format!("operation failed with {status}"),
+            })
+        }
+    }
+
+    pub async fn restore(url: &Url, input: PathBuf) -> Result<(), DatabaseError> {
+        if !input.is_file() {
+            return Err(DatabaseError::Restore {
+                reason: format!("file {} does not exist", input.display()),
+            });
+        }
+
+        let status = Command::new("pg_restore")
+            .arg("--clean")
+            .arg("--if-exists")
+            .arg("--no-owner")
+            .arg("--no-privileges")
+            .arg("--dbname")
+            .arg(url.as_str())
+            .arg(&input)
+            .status()
+            .await
+            .map_err(|source| DatabaseError::Restore {
+                reason: source.to_string(),
+            })?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err(DatabaseError::Restore {
+                reason: format!("operation failed with {status}"),
+            })
+        }
+    }
+
     /// Runs each migrator in slice order with the same migration options.
     pub async fn migrate(
         &self,
@@ -107,15 +182,33 @@ impl Database {
         ))
     }
 
-    /// Removes every object in the public schema and recreates an empty schema.
+    /// Removes all application rows while preserving the public schema and migration history.
     ///
     /// This is intentionally exposed only as an explicit administrative primitive;
     /// normal application startup and migrations never call it.
-    pub async fn reset_public_schema(&self) -> Result<(), DatabaseError> {
-        sqlx::raw_sql("drop schema public cascade; create schema public;")
-            .execute(&self.executor)
-            .await
-            .context(InternalSnafu)?;
+    pub async fn clear_all(&self) -> Result<(), DatabaseError> {
+        sqlx::raw_sql(
+            r#"
+            do $$
+            declare
+                tables text;
+            begin
+                select string_agg(format('%I.%I', schemaname, tablename), ', ')
+                into tables
+                from pg_tables
+                where schemaname = 'public'
+                  and tablename <> '_sqlx_migrations';
+
+                if tables is not null then
+                    execute 'truncate table ' || tables || ' restart identity cascade';
+                end if;
+            end
+            $$;
+            "#,
+        )
+        .execute(&self.executor)
+        .await
+        .context(InternalSnafu)?;
 
         Ok(())
     }

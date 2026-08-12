@@ -82,8 +82,23 @@ dependencies = [
 name = "acebau-cli"
 version = "0.1.0"
 dependencies = [
+ "acebau-activity",
+ "acebau-catalogue",
  "acebau-database",
+ "acebau-files",
+ "acebau-finance",
+ "acebau-inventory",
+ "acebau-invoice",
+ "acebau-machine",
+ "acebau-order",
+ "acebau-part",
+ "acebau-production",
+ "acebau-recipe",
+ "acebau-reseller",
+ "acebau-settings",
  "clap",
+ "clap-config-fallback",
+ "serde",
  "tokio",
  "url",
 ]
@@ -121,6 +136,7 @@ dependencies = [
  "snafu",
  "sqlx",
  "strum 0.27.2",
+ "tokio",
  "url",
  "uuid",
 ]
