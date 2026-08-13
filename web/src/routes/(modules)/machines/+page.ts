@@ -29,11 +29,16 @@ type MachinePage = {
 	totalPages: number;
 };
 
-type MachinesResult = { machineModels: { items: MachineModel[] }; machines: MachinePage };
+type MachinesResult = {
+	machineModels: { items: MachineModel[] };
+	machines: MachinePage;
+	modelMachines: { items: Array<{ modelId: string }> };
+};
 
 const fallback: MachinesResult = {
 	machineModels: { items: [] },
-	machines: { items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 }
+	machines: { items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 },
+	modelMachines: { items: [] }
 };
 
 export const load: PageLoad = async ({ fetch }) => {
@@ -60,15 +65,22 @@ export const load: PageLoad = async ({ fetch }) => {
 				}
 				page pageSize totalItems totalPages
 			}
+			modelMachines: machines(pageSize: 100) { items { modelId } }
 		}`,
 		fallback,
 		{ page: 1, pageSize: 10 }
+	);
+
+	const modelMachineCounts = result.value.modelMachines.items.reduce<Record<string, number>>(
+		(counts, machine) => ({ ...counts, [machine.modelId]: (counts[machine.modelId] ?? 0) + 1 }),
+		{}
 	);
 
 	return {
 		models: result.value.machineModels.items,
 		machines: result.value.machines.items,
 		machinePage: result.value.machines,
+		modelMachineCounts,
 		usingFallback: result.usingFallback,
 		loadError: result.error
 	};

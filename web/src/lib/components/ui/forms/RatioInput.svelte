@@ -16,7 +16,8 @@
 		hint = '',
 		min = '0',
 		required = false,
-		requiredFeedback = RequiredFeedback.None
+		requiredFeedback = RequiredFeedback.None,
+		labelVisible = true
 	}: {
 		label: string;
 		value?: string;
@@ -28,6 +29,7 @@
 		min?: string | number;
 		required?: boolean;
 		requiredFeedback?: RequiredFeedback;
+		labelVisible?: boolean;
 	} = $props();
 
 	let inputElement: HTMLInputElement;
@@ -64,12 +66,16 @@
 </script>
 
 <label class="label">
-	<span class="flex items-center justify-between gap-2">
-		<span>{label}</span>
-		{#if required && requiredFeedback === RequiredFeedback.Full}
-			<Badge small tonal surface class="!bg-surface-500/10">Requis</Badge>
-		{/if}
-	</span>
+	{#if labelVisible}
+		<span class="flex items-center justify-between gap-2">
+			<span>{label}</span>
+			{#if required && requiredFeedback === RequiredFeedback.Full}
+				<Badge small tonal surface class="!bg-surface-500/10">Requis</Badge>
+			{/if}
+		</span>
+	{:else}
+		<span class="sr-only">{label}</span>
+	{/if}
 	<div
 		use:invalidShake={{
 			invalid: Boolean(touched && validationMessage),

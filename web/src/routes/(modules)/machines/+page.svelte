@@ -1,9 +1,7 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
+	import { goto, invalidateAll } from '$app/navigation';
 	import { tick } from 'svelte';
-	import Cpu from '@lucide/svelte/icons/cpu';
 	import Check from '@lucide/svelte/icons/check';
-	import Copy from '@lucide/svelte/icons/copy';
 	import Plus from '@lucide/svelte/icons/plus';
 	import Printer from '@lucide/svelte/icons/printer';
 	import Pencil from '@lucide/svelte/icons/pencil';
@@ -28,7 +26,15 @@
 	import MetricInput from '$lib/components/ui/forms/MetricInput.svelte';
 	import RatioInput from '$lib/components/ui/forms/RatioInput.svelte';
 	import { RequiredFeedback } from '$lib/components/ui/presets';
-	import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
+	import {
+		Metric,
+		Ratio,
+		type MetricDTO,
+		type PowerUnit,
+		type PriceUnit,
+		type RatioDTO,
+		type TimeUnit
+	} from '$lib/unit';
 	import type { PageProps } from './$types';
 
 	type MachineState = 'available' | 'running' | 'maintenance' | 'broken';
@@ -82,6 +88,15 @@
 		surname: string;
 		purchaseCost: string;
 	};
+	type ModelRowForm = ModelForm & {
+		busy: boolean;
+		error: string;
+		validationAttempt: number;
+	};
+	type ModelDraft = ModelRowForm & {
+		id: string;
+		animateRemoval: boolean;
+	};
 	type MachineDraft = MachineForm & {
 		id: string;
 		busy: boolean;
@@ -93,6 +108,7 @@
 	let { data }: PageProps = $props();
 	let models = $state<MachineModel[]>([]);
 	let machines = $state<Machine[]>([]);
+	let modelMachineCounts = $state<Record<string, number>>({});
 	let machinePage = $state<Omit<MachinePage, 'items'>>({
 		page: 1,
 		pageSize: 10,
@@ -106,7 +122,6 @@
 	type ModalKind = 'models' | 'new-machine' | 'confirm-delete-machine' | null;
 	let activeModal = $state<ModalKind>(null);
 	let onboardingStep = $state<1 | 2 | 3>(1);
-	let editingModelId = $state<string | null>(null);
 	let selectedMachineId = $state<string | null>(null);
 	let modelForm = $state<ModelForm>(emptyModel());
 	let machineForm = $state<MachineForm>(emptyMachine());
@@ -123,6 +138,8 @@
 		>
 	>({});
 	let machineDrafts = $state<MachineDraft[]>([]);
+	let modelDrafts = $state<ModelDraft[]>([]);
+	let modelEdits = $state<Record<string, ModelRowForm>>({});
 	let pinnedMachineIds = $state<string[]>([]);
 	let hasUnsavedTableRows = $derived(
 		machineDrafts.length > 0 || Object.keys(machineEdits).length > 0
@@ -131,6 +148,7 @@
 	$effect(() => {
 		models = data.models;
 		machines = data.machines;
+		modelMachineCounts = data.modelMachineCounts;
 		machinePage = {
 			page: data.machinePage.page,
 			pageSize: data.machinePage.pageSize,
@@ -188,8 +206,14 @@
 		return `${metric.value}${metric.unit}`;
 	}
 
-	function ratioLabel(ratio: RatioDTO) {
-		return `${ratio.value}${ratio.numeratorUnit}/${ratio.denominatorUnit}`;
+	function ratioLabel(ratio: RatioDTO<PriceUnit, TimeUnit>) {
+		const yearly = Ratio.from(ratio).convertTo('€', 'y');
+		return `${yearly.value.toDecimalPlaces(2).toString()}€/année`;
+	}
+
+	function lifetimeLabel(lifetime: MetricDTO<TimeUnit>) {
+		const yearly = Metric.from(lifetime).convertTo('y');
+		return `${yearly.value.toDecimalPlaces(2).toString()} ans`;
 	}
 
 	function modelInput(form: ModelForm) {
@@ -272,34 +296,65 @@
 	}
 
 	function openModelManager() {
-		editingModelId = null;
-		modelForm = emptyModel();
+		modelDrafts = [];
+		modelEdits = {};
+		error = '';
 		activeModal = 'models';
 	}
 
-	function editModel(model: MachineModel) {
-		editingModelId = model.id;
-		modelForm = {
+	function modelRowForm(model: MachineModel): ModelRowForm {
+		const yearlyMaintenanceCost = Ratio.from(model.maintenanceCost).convertTo('€', 'y');
+		const yearlyLifetime = Metric.from(model.lifetime).convertTo('y');
+		return {
 			brand: model.brand,
 			name: model.name,
-			maintenanceCostValue: model.maintenanceCost.value,
-			maintenanceCostUnit: model.maintenanceCost.denominatorUnit,
-			lifetimeValue: model.lifetime.value,
-			lifetimeUnit: model.lifetime.unit,
+			maintenanceCostValue: yearlyMaintenanceCost.value.toDecimalPlaces(2).toString(),
+			maintenanceCostUnit: 'y',
+			lifetimeValue: yearlyLifetime.value.toDecimalPlaces(2).toString(),
+			lifetimeUnit: 'y',
 			averagePowerValue: model.averagePower.value,
-			averagePowerUnit: model.averagePower.unit
+			averagePowerUnit: model.averagePower.unit,
+			busy: false,
+			error: '',
+			validationAttempt: 0
 		};
 	}
 
-	function copyModel(model: MachineModel) {
-		editModel(model);
-		editingModelId = null;
-		modelForm.name = `${model.name} copie`;
+	function addModelDraft() {
+		modelDrafts = [
+			{
+				...emptyModel(),
+				id: crypto.randomUUID(),
+				busy: false,
+				error: '',
+				validationAttempt: 0,
+				animateRemoval: true
+			},
+			...modelDrafts
+		];
 	}
 
-	function addModel() {
-		editingModelId = null;
-		modelForm = emptyModel();
+	function updateModelDraft(id: string, changes: Partial<ModelDraft>) {
+		modelDrafts = modelDrafts.map((draft) => (draft.id === id ? { ...draft, ...changes } : draft));
+	}
+
+	function cancelModelDraft(id: string) {
+		modelDrafts = modelDrafts.filter((draft) => draft.id !== id);
+	}
+
+	function beginModelEdit(model: MachineModel) {
+		modelEdits = { ...modelEdits, [model.id]: modelRowForm(model) };
+	}
+
+	function updateModelEdit(id: string, changes: Partial<ModelRowForm>) {
+		const edit = modelEdits[id];
+		if (edit) modelEdits = { ...modelEdits, [id]: { ...edit, ...changes } };
+	}
+
+	function cancelModelEdit(id: string) {
+		const remaining = { ...modelEdits };
+		delete remaining[id];
+		modelEdits = remaining;
 	}
 
 	function openMachineForm() {
@@ -370,6 +425,10 @@
 			await tick();
 			cancelMachineDraft(id);
 			machines = [result.createMachine, ...machines].slice(0, machinePage.pageSize);
+			modelMachineCounts = {
+				...modelMachineCounts,
+				[draft.modelId]: (modelMachineCounts[draft.modelId] ?? 0) + 1
+			};
 			pinnedMachineIds = [result.createMachine.id, ...pinnedMachineIds];
 			const totalItems = machinePage.totalItems + 1;
 			machinePage = {
@@ -390,10 +449,15 @@
 		activeModal = 'confirm-delete-machine';
 	}
 
+	function openMachineRow(event: MouseEvent | KeyboardEvent, machine: Machine) {
+		if (machineEdits[machine.id]) return;
+		if (event.target instanceof Element && event.target.closest('a, button, input, select')) return;
+		void goto(`/machines/${machine.id}`);
+	}
+
 	function closeModal() {
 		activeModal = null;
 		onboardingStep = 1;
-		editingModelId = null;
 		selectedMachineId = null;
 	}
 
@@ -410,30 +474,73 @@
 		}[state];
 	}
 
-	async function saveModel() {
-		saving = true;
-		error = '';
+	async function saveModelDraft(id: string) {
+		const draft = modelDrafts.find((candidate) => candidate.id === id);
+		if (!draft || draft.busy) return;
+		updateModelDraft(id, { validationAttempt: draft.validationAttempt + 1 });
+		if (!draft.brand.trim() || !draft.name.trim()) {
+			updateModelDraft(id, { error: 'Renseignez la marque et le nom.' });
+			return;
+		}
+
+		updateModelDraft(id, { busy: true, error: '' });
 		try {
-			const input = modelInput(modelForm);
-			if (editingModelId) {
-				await gql(
-					`mutation($id: String!, $input: MachineModelInput!) { updateMachineModel(id: $id, input: $input) { id } }`,
-					{ id: editingModelId, input }
-				);
-			} else {
-				await gql(
-					`mutation($input: MachineModelInput!) { createMachineModel(input: $input) { id } }`,
-					{ input }
-				);
-			}
-			if (activeModal !== 'models') closeModal();
-			else addModel();
-			await invalidateAll();
+			const result = await gql<{ createMachineModel: MachineModel }>(
+				`mutation($input: MachineModelInput!) {
+					createMachineModel(input: $input) {
+						id brand name
+						maintenanceCost { value numeratorUnit denominatorUnit }
+						lifetime { value unit }
+						averagePower { value unit }
+					}
+				}`,
+				{ input: modelInput(draft) }
+			);
+			updateModelDraft(id, { animateRemoval: false });
+			await tick();
+			cancelModelDraft(id);
+			models = [result.createMachineModel, ...models];
 		} catch (cause) {
-			console.error('Impossible de créer le modèle.', cause);
-			error = `Le modèle ne peut pas être créé. ${cause instanceof Error ? cause.message : 'Vérifiez les valeurs saisies.'}`;
-		} finally {
-			saving = false;
+			updateModelDraft(id, {
+				busy: false,
+				error: cause instanceof Error ? cause.message : 'Impossible de créer le modèle.'
+			});
+		}
+	}
+
+	async function saveModelEdit(id: string) {
+		const edit = modelEdits[id];
+		if (!edit || edit.busy) return;
+		updateModelEdit(id, { validationAttempt: edit.validationAttempt + 1 });
+		if (!edit.brand.trim() || !edit.name.trim()) {
+			updateModelEdit(id, { error: 'Renseignez la marque et le nom.' });
+			return;
+		}
+
+		updateModelEdit(id, { busy: true, error: '' });
+		try {
+			const result = await gql<{ updateMachineModel: MachineModel }>(
+				`mutation($id: String!, $input: MachineModelInput!) {
+					updateMachineModel(id: $id, input: $input) {
+						id brand name
+						maintenanceCost { value numeratorUnit denominatorUnit }
+						lifetime { value unit }
+						averagePower { value unit }
+					}
+				}`,
+				{ id, input: modelInput(edit) }
+			);
+			const updatedModel = result.updateMachineModel;
+			models = models.map((model) => (model.id === id ? updatedModel : model));
+			machines = machines.map((machine) =>
+				machine.modelId === id ? { ...machine, model: updatedModel } : machine
+			);
+			cancelModelEdit(id);
+		} catch (cause) {
+			updateModelEdit(id, {
+				busy: false,
+				error: cause instanceof Error ? cause.message : 'Impossible de modifier le modèle.'
+			});
 		}
 	}
 
@@ -486,7 +593,7 @@
 	}
 
 	async function deleteModel(id: string) {
-		const machineCount = machines.filter((machine) => machine.modelId === id).length;
+		const machineCount = modelMachineCounts[id] ?? 0;
 		if (machineCount > 0) {
 			error = `Ce modèle ne peut pas être supprimé : ${machineCount} machine${machineCount > 1 ? 's lui sont' : ' lui est'} encore associée${machineCount > 1 ? 's' : ''}.`;
 			return;
@@ -495,8 +602,8 @@
 		error = '';
 		try {
 			await gql(`mutation($id: String!) { deleteMachineModel(id: $id) }`, { id });
-			if (editingModelId === id) addModel();
-			await invalidateAll();
+			cancelModelEdit(id);
+			models = models.filter((model) => model.id !== id);
 		} catch (cause) {
 			error = `Le modèle ne peut pas être supprimé. ${cause instanceof Error ? cause.message : ''}`;
 		} finally {
@@ -511,7 +618,17 @@
 		error = '';
 		try {
 			await gql(`mutation($id: String!) { deleteMachine(id: $id) }`, { id: deletedMachineId });
+			const deletedMachine = machines.find((machine) => machine.id === deletedMachineId);
 			machines = machines.filter((machine) => machine.id !== deletedMachineId);
+			if (deletedMachine) {
+				modelMachineCounts = {
+					...modelMachineCounts,
+					[deletedMachine.modelId]: Math.max(
+						0,
+						(modelMachineCounts[deletedMachine.modelId] ?? 1) - 1
+					)
+				};
+			}
 			closeModal();
 			await invalidateAll();
 		} catch (cause) {
@@ -791,12 +908,9 @@
 		</section>
 		<TableSection title="Parc">
 			{#snippet toolbar()}
-				<button
-					class="badge cursor-pointer preset-tonal-surface transition [--badge-size:var(--text-sm)] hover:brightness-95"
-					type="button"
-					onclick={openModelManager}
-					><Cpu size={16} />{models.length} modèle{models.length > 1 ? 's' : ''}</button
-				>
+				<Button variant="outlined" tone="surface" size="sm" onclick={openModelManager}>
+					Voir les modèles
+				</Button>
 				<Button tone="tertiary" size="sm" onclick={addMachineDraft} disabled={models.length === 0}>
 					<Plus size={16} />Nouvelle machine
 				</Button>
@@ -905,8 +1019,15 @@
 					{/each}
 					{#each machines as machine, index (machine.id)}
 						<tr
-							class="transition hover:bg-surface-100-900"
+							class="cursor-pointer transition hover:bg-surface-100-900"
 							class:bg-tertiary-50-950={pinnedMachineIds.includes(machine.id)}
+							role="link"
+							tabindex="0"
+							aria-label={`Ouvrir ${machine.surname}`}
+							onclick={(event) => openMachineRow(event, machine)}
+							onkeydown={(event) => {
+								if (event.key === 'Enter') openMachineRow(event, machine);
+							}}
 						>
 							<td data-label="" class="mobile-card-hidden text-surface-700-300">
 								{(machinePage.page - 1) * machinePage.pageSize + index + 1}
@@ -996,7 +1117,7 @@
 		<Modal
 			open={true}
 			onOpenChange={handleModalChange}
-			contentClasses="w-full max-w-2xl rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
+			contentClasses="w-[min(96vw,90rem)] max-w-none rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
 		>
 			{#snippet content()}
 				<div class="mb-6 flex items-start justify-between gap-4">
@@ -1013,100 +1134,213 @@
 						onclick={closeModal}><X size={18} /></button
 					>
 				</div>
-				<div class="mb-5 grid gap-2">
-					{#each models as model (model.id)}{@const machineCount = machines.filter(
-							(machine) => machine.modelId === model.id
-						).length}
-						<div
-							class="flex items-center justify-between gap-3 rounded-base border border-surface-300-700 p-3"
-						>
-							<div>
-								<strong class="block text-sm text-surface-900-100"
-									>{model.brand} · {model.name}</strong
-								><small class="text-surface-700-300"
-									>{metricLabel(model.averagePower)} · durée de vie {metricLabel(
-										model.lifetime
-									)}{#if machineCount > 0}
-										· {machineCount} machine{machineCount > 1 ? 's' : ''}{/if}</small
-								>
-							</div>
-							<div class="flex gap-1">
-								<IconAction label={`Modifier ${model.name}`} onclick={() => editModel(model)}
-									><Pencil size={16} /></IconAction
-								>
-								<IconAction label={`Copier ${model.name}`} onclick={() => copyModel(model)}
-									><Copy size={16} /></IconAction
-								>
-								<IconAction
-									label={machineCount > 0
-										? `Impossible de supprimer ${model.name}, modèle utilisé`
-										: `Supprimer ${model.name}`}
-									tone="error"
-									disabled={saving || machineCount > 0}
-									onclick={() => deleteModel(model.id)}><Trash2 size={16} /></IconAction
-								>
-							</div>
-						</div>{/each}
+				{#if error}<p class="mb-4 rounded-base preset-tonal-error p-3" role="alert">{error}</p>{/if}
+				<div class="mb-3 flex justify-end">
+					<Button tone="tertiary" size="sm" onclick={addModelDraft}>
+						<Plus size={16} />Nouveau modèle
+					</Button>
 				</div>
-				<form
-					onsubmit={(event) => {
-						event.preventDefault();
-						saveModel();
-					}}
-					class="grid gap-4 border-t border-surface-300-700 pt-5"
-				>
-					<h3 class="text-lg font-semibold text-surface-900-100">
-						{editingModelId ? 'Modifier le modèle' : 'Ajouter un modèle'}
-					</h3>
-					<div class="grid grid-cols-6 gap-3">
-						<label class="col-span-3 label max-[600px]:col-span-6"
-							>Marque<Input required bind:value={modelForm.brand} /></label
-						><label class="col-span-3 label max-[600px]:col-span-6"
-							>Nom<Input required bind:value={modelForm.name} /></label
-						>
-						<div class="col-span-2 max-[600px]:col-span-6">
-							<RatioInput
-								label="Coût de maintenance"
-								required
-								requiredFeedback={RequiredFeedback.Full}
-								bind:value={modelForm.maintenanceCostValue}
-								numeratorUnit="€"
-								bind:denominatorUnit={modelForm.maintenanceCostUnit}
-								numeratorUnits={priceUnits}
-								denominatorUnits={maintenanceCostUnits}
-							/>
-						</div>
-						<div class="col-span-2 max-[600px]:col-span-6">
-							<MetricInput
-								label="Durée de vie"
-								required
-								requiredFeedback={RequiredFeedback.Full}
-								kind="time"
-								bind:value={modelForm.lifetimeValue}
-								bind:unit={modelForm.lifetimeUnit}
-								units={timeUnits}
-							/>
-						</div>
-						<div class="col-span-2 max-[600px]:col-span-6">
-							<MetricInput
-								label="Puissance moyenne"
-								required
-								requiredFeedback={RequiredFeedback.Full}
-								kind="power"
-								bind:value={modelForm.averagePowerValue}
-								bind:unit={modelForm.averagePowerUnit}
-								units={powerUnits}
-							/>
-						</div>
-					</div>
-					<div class="flex justify-end gap-2.5">
-						<Button variant="outlined" tone="secondary" type="button" onclick={addModel}
-							>Nouveau</Button
-						><Button type="submit" tone="tertiary" disabled={saving}
-							>{saving ? 'Enregistrement…' : editingModelId ? 'Enregistrer' : 'Ajouter'}</Button
-						>
-					</div>
-				</form>
+				<Table responsiveCards class="min-w-[74rem] table-fixed">
+					<colgroup>
+						<col class="w-24" /><col class="w-32" /><col class="w-36" /><col class="w-52" /><col
+							class="w-44"
+						/><col class="w-44" /><col class="w-24" /><col class="w-24" />
+					</colgroup>
+					<thead>
+						<tr>
+							<th>#</th><th>Marque</th><th>Modèle</th><th>Maintenance</th><th>Durée de vie</th><th
+								>Puissance</th
+							><th>Machines</th><th><span class="sr-only">Actions</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each modelDrafts as draft (draft.id)}
+							<TableDraftRow animateRemoval={draft.animateRemoval}>
+								<td data-label="" class="mobile-card-hidden"
+									><Badge small tonal tertiary>Nouveau</Badge></td
+								>
+								<td data-label="Marque">
+									<Input
+										required
+										requiredFeedback={RequiredFeedback.None}
+										invalid={Boolean(draft.error && !draft.brand.trim())}
+										validationAttempt={draft.validationAttempt}
+										bind:value={draft.brand}
+										disabled={draft.busy}
+										aria-label="Marque du nouveau modèle"
+									/>
+								</td>
+								<td data-label="Modèle">
+									<Input
+										required
+										requiredFeedback={RequiredFeedback.None}
+										invalid={Boolean(draft.error && !draft.name.trim())}
+										validationAttempt={draft.validationAttempt}
+										bind:value={draft.name}
+										disabled={draft.busy}
+										aria-label="Nom du nouveau modèle"
+									/>
+								</td>
+								<td data-label="Maintenance"
+									><RatioInput
+										label="Coût de maintenance"
+										labelVisible={false}
+										required
+										bind:value={draft.maintenanceCostValue}
+										numeratorUnit="€"
+										bind:denominatorUnit={draft.maintenanceCostUnit}
+										numeratorUnits={priceUnits}
+										denominatorUnits={maintenanceCostUnits}
+									/></td
+								>
+								<td data-label="Durée de vie"
+									><MetricInput
+										label="Durée de vie"
+										labelVisible={false}
+										required
+										kind="time"
+										bind:value={draft.lifetimeValue}
+										bind:unit={draft.lifetimeUnit}
+										units={timeUnits}
+									/></td
+								>
+								<td data-label="Puissance"
+									><MetricInput
+										label="Puissance moyenne"
+										labelVisible={false}
+										required
+										kind="power"
+										bind:value={draft.averagePowerValue}
+										bind:unit={draft.averagePowerUnit}
+										units={powerUnits}
+									/></td
+								>
+								<td data-label="Machines">—</td>
+								<td data-label="" class="mobile-card-actions">
+									<IconAction
+										label="Créer le modèle"
+										tone="success"
+										disabled={draft.busy}
+										onclick={() => saveModelDraft(draft.id)}><Check size={18} /></IconAction
+									>
+									<IconAction
+										label="Annuler la création"
+										tone="error"
+										disabled={draft.busy}
+										onclick={() => cancelModelDraft(draft.id)}><X size={18} /></IconAction
+									>
+								</td>
+							</TableDraftRow>
+						{/each}
+						{#each models as model, index (model.id)}
+							{@const machineCount = modelMachineCounts[model.id] ?? 0}
+							<tr>
+								<td data-label="" class="mobile-card-hidden text-surface-700-300">{index + 1}</td>
+								{#if modelEdits[model.id]}
+									<td data-label="Marque"
+										><Input
+											required
+											requiredFeedback={RequiredFeedback.None}
+											invalid={Boolean(
+												modelEdits[model.id].error && !modelEdits[model.id].brand.trim()
+											)}
+											validationAttempt={modelEdits[model.id].validationAttempt}
+											bind:value={modelEdits[model.id].brand}
+											disabled={modelEdits[model.id].busy}
+										/></td
+									>
+									<td data-label="Modèle"
+										><Input
+											required
+											requiredFeedback={RequiredFeedback.None}
+											invalid={Boolean(
+												modelEdits[model.id].error && !modelEdits[model.id].name.trim()
+											)}
+											validationAttempt={modelEdits[model.id].validationAttempt}
+											bind:value={modelEdits[model.id].name}
+											disabled={modelEdits[model.id].busy}
+										/></td
+									>
+									<td data-label="Maintenance"
+										><RatioInput
+											label="Coût de maintenance"
+											labelVisible={false}
+											required
+											bind:value={modelEdits[model.id].maintenanceCostValue}
+											numeratorUnit="€"
+											bind:denominatorUnit={modelEdits[model.id].maintenanceCostUnit}
+											numeratorUnits={priceUnits}
+											denominatorUnits={maintenanceCostUnits}
+										/></td
+									>
+									<td data-label="Durée de vie"
+										><MetricInput
+											label="Durée de vie"
+											labelVisible={false}
+											required
+											kind="time"
+											bind:value={modelEdits[model.id].lifetimeValue}
+											bind:unit={modelEdits[model.id].lifetimeUnit}
+											units={timeUnits}
+										/></td
+									>
+									<td data-label="Puissance"
+										><MetricInput
+											label="Puissance moyenne"
+											labelVisible={false}
+											required
+											kind="power"
+											bind:value={modelEdits[model.id].averagePowerValue}
+											bind:unit={modelEdits[model.id].averagePowerUnit}
+											units={powerUnits}
+										/></td
+									>
+								{:else}
+									<td data-label="Marque"><strong>{model.brand}</strong></td>
+									<td data-label="Modèle"><strong>{model.name}</strong></td>
+									<td data-label="Maintenance">{ratioLabel(model.maintenanceCost)}</td>
+									<td data-label="Durée de vie">{lifetimeLabel(model.lifetime)}</td>
+									<td data-label="Puissance">{metricLabel(model.averagePower)}</td>
+								{/if}
+								<td data-label="Machines">{machineCount}</td>
+								<td data-label="" class="mobile-card-actions">
+									{#if modelEdits[model.id]}
+										<IconAction
+											label={`Confirmer la modification de ${model.name}`}
+											tone="success"
+											disabled={modelEdits[model.id].busy}
+											onclick={() => saveModelEdit(model.id)}><Check size={18} /></IconAction
+										>
+										<IconAction
+											label={`Annuler la modification de ${model.name}`}
+											tone="error"
+											disabled={modelEdits[model.id].busy}
+											onclick={() => cancelModelEdit(model.id)}><X size={18} /></IconAction
+										>
+									{:else}
+										<IconAction
+											label={`Modifier ${model.name}`}
+											onclick={() => beginModelEdit(model)}><Pencil size={18} /></IconAction
+										>
+										<IconAction
+											label={machineCount > 0
+												? `Impossible de supprimer ${model.name}, modèle utilisé`
+												: `Supprimer ${model.name}`}
+											tone="error"
+											disabled={saving || machineCount > 0}
+											onclick={() => deleteModel(model.id)}><Trash2 size={18} /></IconAction
+										>
+									{/if}
+								</td>
+							</tr>
+						{:else}
+							{#if modelDrafts.length === 0}<tr
+									><td colspan="8" class="py-10 text-center text-surface-700-300">Aucun modèle.</td
+									></tr
+								>{/if}
+						{/each}
+					</tbody>
+				</Table>
 			{/snippet}
 		</Modal>
 	{/if}

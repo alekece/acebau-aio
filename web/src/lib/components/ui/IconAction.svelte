@@ -25,11 +25,16 @@
 
 	let toneClasses = $derived(
 		{
-			surface: 'bg-transparent !text-surface-600-400 hover:bg-surface-200-800',
-			tertiary: 'bg-transparent !text-tertiary-500 hover:bg-tertiary-100-900',
-			success: 'bg-transparent !text-success-500 hover:bg-success-100-900',
-			warning: 'bg-transparent !text-warning-500 hover:bg-warning-100-900',
-			error: 'bg-transparent !text-error-500 hover:bg-error-100-900'
+			surface:
+				'bg-transparent !text-surface-700-300 hover:bg-surface-200-800 hover:!text-surface-950-50 focus-visible:!text-surface-950-50',
+			tertiary:
+				'bg-transparent !text-surface-700-300 hover:bg-tertiary-100-900 hover:!text-tertiary-600-400 focus-visible:!text-tertiary-600-400',
+			success:
+				'bg-transparent !text-surface-700-300 hover:bg-success-500/10 hover:!text-success-600-400 focus-visible:bg-success-500/10 focus-visible:!text-success-600-400',
+			warning:
+				'bg-transparent !text-surface-700-300 hover:bg-warning-100-900 hover:!text-warning-600-400 focus-visible:!text-warning-600-400',
+			error:
+				'bg-transparent !text-surface-700-300 hover:bg-error-500/10 hover:!text-error-600-400 focus-visible:bg-error-500/10 focus-visible:!text-error-600-400'
 		}[tone]
 	);
 
@@ -49,6 +54,8 @@
 		class="btn-icon {toneClasses} focus-visible:ring-2 focus-visible:ring-current focus-visible:outline-none {disabled
 			? 'cursor-not-allowed opacity-45'
 			: ''} {className}"
+		data-icon-action
+		data-tone={tone}
 		aria-label={label}
 		aria-disabled={disabled}
 		onclick={handleClick}
@@ -63,3 +70,21 @@
 		</Tooltip.Content>
 	</Tooltip.Positioner>
 </Tooltip>
+
+<style>
+	:global([data-icon-action][data-tone='error']:hover),
+	:global([data-icon-action][data-tone='error']:focus-visible),
+	:global([data-icon-action][data-tone='error']:hover svg),
+	:global([data-icon-action][data-tone='error']:focus-visible svg) {
+		color: var(--color-error-500) !important;
+		stroke: var(--color-error-500) !important;
+	}
+
+	:global([data-icon-action][data-tone='success']:hover),
+	:global([data-icon-action][data-tone='success']:focus-visible),
+	:global([data-icon-action][data-tone='success']:hover svg),
+	:global([data-icon-action][data-tone='success']:focus-visible svg) {
+		color: var(--color-success-500) !important;
+		stroke: var(--color-success-500) !important;
+	}
+</style>

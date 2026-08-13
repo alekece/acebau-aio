@@ -9,6 +9,7 @@
 		action,
 		onAction,
 		backHref,
+		heading,
 		actions
 	}: {
 		title: string;
@@ -16,6 +17,7 @@
 		action?: string;
 		onAction?: () => void;
 		backHref?: string;
+		heading?: Snippet;
 		actions?: Snippet;
 	} = $props();
 </script>
@@ -29,7 +31,9 @@
 				class="mb-3 inline-flex items-center gap-1.5 text-sm text-surface-700-300 hover:text-surface-900-100"
 				><ArrowLeft size={15} />Retour</a
 			>{/if}
-		<h1 class="m-0 text-3xl font-bold tracking-tight text-surface-900-100">{title}</h1>
+		<h1 class="m-0 text-3xl font-bold tracking-tight text-surface-900-100">
+			{#if heading}{@render heading()}{:else}{title}{/if}
+		</h1>
 		{#if description}<p class="mt-2 mb-0 max-w-2xl text-base text-surface-700-300">
 				{description}
 			</p>{/if}
