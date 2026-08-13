@@ -47,7 +47,6 @@ pub struct Machine {
     #[table(relationship(name = model, target = MachineModel))]
     pub model_id: Uuid,
     pub surname: String,
-    #[table(skip)]
     pub purchase_cost: Price,
     pub printing_time: Time,
     pub state: MachineState,

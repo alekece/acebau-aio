@@ -77,11 +77,8 @@
 		brand: string;
 		name: string;
 		maintenanceCostValue: string;
-		maintenanceCostUnit: string;
 		lifetimeValue: string;
-		lifetimeUnit: string;
 		averagePowerValue: string;
-		averagePowerUnit: string;
 	};
 
 	type MachineForm = {
@@ -132,6 +129,7 @@
 			{
 				modelId: string;
 				surname: string;
+				purchaseCost: string;
 				state: Machine['state'];
 				busy: boolean;
 				error: string;
@@ -176,29 +174,17 @@
 		{ value: 'mo', label: 'mois' },
 		{ value: 'y', label: 'année' }
 	];
-	const maintenanceCostUnits = [
-		{ value: 'min', label: 'minute' },
-		{ value: 'h', label: 'heure' },
-		{ value: 'd', label: 'jour' },
-		{ value: 'mo', label: 'mois' },
-		{ value: 'y', label: 'année' }
-	];
 	const priceUnits = [{ value: '€', label: '€' }];
-	const powerUnits = [
-		{ value: 'W', label: 'W' },
-		{ value: 'kW', label: 'kW' }
-	];
+	const yearUnits = [{ value: 'y', label: 'année' }];
+	const wattUnits = [{ value: 'W', label: 'W' }];
 
 	function emptyModel(): ModelForm {
 		return {
 			brand: '',
 			name: '',
 			maintenanceCostValue: '5',
-			maintenanceCostUnit: 'y',
 			lifetimeValue: '10',
-			lifetimeUnit: '',
-			averagePowerValue: '100',
-			averagePowerUnit: ''
+			averagePowerValue: '100'
 		};
 	}
 
@@ -216,6 +202,11 @@
 		return `${yearly.value.toDecimalPlaces(2).toString()} ans`;
 	}
 
+	function powerLabel(power: MetricDTO<PowerUnit>) {
+		const watts = Metric.from(power).convertTo('W');
+		return `${watts.value.toDecimalPlaces(2).toString()}W`;
+	}
+
 	function metricUsageCostLabel(cost: RatioDTO<PriceUnit, TimeUnit>) {
 		const hourly = Ratio.from(cost).convertTo('€', 'h');
 		return `${hourly.value.toDecimalPlaces(4).toString()}€/h`;
@@ -228,10 +219,10 @@
 			maintenanceCost: {
 				value: form.maintenanceCostValue,
 				numeratorUnit: '€',
-				denominatorUnit: form.maintenanceCostUnit
+				denominatorUnit: 'y'
 			},
-			lifetime: { value: form.lifetimeValue, unit: form.lifetimeUnit },
-			averagePower: { value: form.averagePowerValue, unit: form.averagePowerUnit }
+			lifetime: { value: form.lifetimeValue, unit: 'y' },
+			averagePower: { value: form.averagePowerValue, unit: 'W' }
 		};
 	}
 
@@ -311,15 +302,13 @@
 	function modelRowForm(model: MachineModel): ModelRowForm {
 		const yearlyMaintenanceCost = Ratio.from(model.maintenanceCost).convertTo('€', 'y');
 		const yearlyLifetime = Metric.from(model.lifetime).convertTo('y');
+		const wattPower = Metric.from(model.averagePower).convertTo('W');
 		return {
 			brand: model.brand,
 			name: model.name,
 			maintenanceCostValue: yearlyMaintenanceCost.value.toDecimalPlaces(2).toString(),
-			maintenanceCostUnit: 'y',
 			lifetimeValue: yearlyLifetime.value.toDecimalPlaces(2).toString(),
-			lifetimeUnit: 'y',
-			averagePowerValue: model.averagePower.value,
-			averagePowerUnit: model.averagePower.unit,
+			averagePowerValue: wattPower.value.toDecimalPlaces(2).toString(),
 			busy: false,
 			error: '',
 			validationAttempt: 0
@@ -651,6 +640,7 @@
 			[machine.id]: {
 				modelId: machine.modelId,
 				surname: machine.surname,
+				purchaseCost: Metric.from(machine.purchaseCost).convertTo('€').value.toString(),
 				state: machine.state,
 				busy: false,
 				error: ''
@@ -672,12 +662,20 @@
 
 	async function saveInlineMachine(id: string) {
 		const edit = machineEdits[id];
-		if (!edit?.surname.trim()) return;
+		if (!edit?.surname.trim() || !edit.purchaseCost.trim()) return;
 		machineEdits = { ...machineEdits, [id]: { ...edit, busy: true, error: '' } };
 		try {
 			await gql(
 				`mutation($id: String!, $input: MachineChangeset!) { patchMachine(id: $id, input: $input) { id } }`,
-				{ id, input: { modelId: edit.modelId, surname: edit.surname.trim(), state: edit.state } }
+				{
+					id,
+					input: {
+						modelId: edit.modelId,
+						surname: edit.surname.trim(),
+						purchaseCost: { value: edit.purchaseCost, unit: '€' },
+						state: edit.state
+					}
+				}
 			);
 			cancelMachineEdit(id);
 			await invalidateAll();
@@ -769,9 +767,8 @@
 									requiredFeedback={RequiredFeedback.Full}
 									bind:value={modelForm.maintenanceCostValue}
 									numeratorUnit="€"
-									bind:denominatorUnit={modelForm.maintenanceCostUnit}
 									numeratorUnits={priceUnits}
-									denominatorUnits={maintenanceCostUnits}
+									denominatorUnits={yearUnits}
 								/>
 							</div>
 							<div class="col-span-2 max-[600px]:col-span-6">
@@ -779,10 +776,8 @@
 									label="Durée de vie"
 									required
 									requiredFeedback={RequiredFeedback.Full}
-									kind="time"
 									bind:value={modelForm.lifetimeValue}
-									bind:unit={modelForm.lifetimeUnit}
-									units={timeUnits}
+									units={yearUnits}
 								/>
 							</div>
 							<div class="col-span-2 max-[600px]:col-span-6">
@@ -790,10 +785,8 @@
 									label="Puissance moyenne"
 									required
 									requiredFeedback={RequiredFeedback.Full}
-									kind="power"
 									bind:value={modelForm.averagePowerValue}
-									bind:unit={modelForm.averagePowerUnit}
-									units={powerUnits}
+									units={wattUnits}
 								/>
 							</div>
 						</div>
@@ -860,7 +853,7 @@
 								<strong class="block text-base text-surface-900-100"
 									>{modelForm.brand} · {modelForm.name}</strong
 								><small class="text-surface-700-300"
-									>{modelForm.averagePowerValue}{modelForm.averagePowerUnit} · durée de vie {modelForm.lifetimeValue}{modelForm.lifetimeUnit}</small
+									>{modelForm.averagePowerValue}W · durée de vie {modelForm.lifetimeValue} ans</small
 								>
 							</div>
 							<div class="rounded-base border border-surface-300-700 bg-surface-100-900 p-4">
@@ -925,13 +918,13 @@
 			<Table
 				responsiveCards
 				loading={pageLoading}
-				loadingColumns={8}
+				loadingColumns={9}
 				page={machinePage.page}
 				pageSize={machinePage.pageSize}
 				totalItems={machinePage.totalItems}
 				totalPages={machinePage.totalPages}
 				onPageChange={loadMachinePage}
-				class="min-w-[62rem] table-fixed"
+				class="min-w-[70rem] table-fixed"
 			>
 				<colgroup>
 					<col class="w-24" />
@@ -940,14 +933,17 @@
 					<col class="w-38" />
 					<col class="w-32" />
 					<col class="w-28" />
+					<col class="w-28" />
 					<col class="w-40" />
 					<col class="w-22" />
 				</colgroup>
 				<thead
 					><tr
 						><th>#</th><th>Machine</th><th>Modèle</th><th>État</th><th>Temps d’impression</th><th
-							>Coût d’usage</th
-						><th>Prochaine maintenance</th><th><span class="sr-only">Actions</span></th></tr
+							>Prix d’achat</th
+						><th>Coût d’usage</th><th>Prochaine maintenance</th><th
+							><span class="sr-only">Actions</span></th
+						></tr
 					></thead
 				>
 				<tbody>
@@ -1007,6 +1003,7 @@
 									/><span class="font-medium">€</span>
 								</div>
 							</td>
+							<td data-label="Coût d’usage" class="text-surface-700-300">—</td>
 							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
 							<td data-label="" class="mobile-card-actions">
 								<IconAction
@@ -1085,6 +1082,22 @@
 								{:else}<MachineStatus state={machine.state} />{/if}</td
 							>
 							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
+							<td data-label="Prix d’achat">
+								{#if machineEdits[machine.id]}
+									<div class="flex min-w-24 items-center gap-1.5">
+										<Input
+											required
+											requiredFeedback={RequiredFeedback.None}
+											bind:value={machineEdits[machine.id].purchaseCost}
+											inputmode="decimal"
+											aria-label={`Prix d’achat de ${machine.surname}`}
+											disabled={machineEdits[machine.id].busy}
+										/><span class="font-medium">€</span>
+									</div>
+								{:else}
+									{metricLabel(machine.purchaseCost)}
+								{/if}
+							</td>
 							<td data-label="Coût d’usage">{metricUsageCostLabel(machine.usageCost)}</td>
 							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
 							<td data-label="" class="mobile-card-actions">
@@ -1124,160 +1137,85 @@
 		<Modal
 			open={true}
 			onOpenChange={handleModalChange}
-			contentClasses="w-[min(96vw,90rem)] max-w-none rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
+			contentClasses="max-h-[88vh] w-[min(94vw,82rem)] max-w-none overflow-y-auto rounded-container bg-surface-100-900 p-6 shadow-xl max-[600px]:p-4"
 		>
 			{#snippet content()}
-				<div class="mb-6 flex items-start justify-between gap-4">
+				<div class="mb-4 flex items-start justify-between gap-4 px-1">
 					<div>
-						<p class="mb-1 text-xs font-semibold tracking-wider text-surface-700-300 uppercase">
-							Référentiel
+						<div class="flex flex-wrap items-center gap-2.5">
+							<h2 class="text-2xl font-semibold text-surface-900-100">Référentiel</h2>
+							<Badge small tonal surface
+								>{models.length} {models.length === 1 ? 'modèle' : 'modèles'}</Badge
+							>
+						</div>
+						<p class="mt-1 text-sm text-surface-700-300">
+							Gérez les caractéristiques communes à vos machines.
 						</p>
-						<h2 class="text-2xl font-semibold text-surface-900-100">Modèles de machines</h2>
 					</div>
 					<button
-						class="btn-icon preset-tonal-surface"
+						class="btn-icon shrink-0 preset-tonal-surface"
 						type="button"
 						aria-label="Fermer"
 						onclick={closeModal}><X size={18} /></button
 					>
 				</div>
 				{#if error}<p class="mb-4 rounded-base preset-tonal-error p-3" role="alert">{error}</p>{/if}
-				<div class="mb-3 flex justify-end">
-					<Button tone="tertiary" size="sm" onclick={addModelDraft}>
-						<Plus size={16} />Nouveau modèle
-					</Button>
-				</div>
-				<Table responsiveCards class="min-w-[74rem] table-fixed">
-					<colgroup>
-						<col class="w-24" /><col class="w-32" /><col class="w-36" /><col class="w-52" /><col
-							class="w-44"
-						/><col class="w-44" /><col class="w-24" /><col class="w-24" />
-					</colgroup>
-					<thead>
-						<tr>
-							<th>#</th><th>Marque</th><th>Modèle</th><th>Maintenance</th><th>Durée de vie</th><th
-								>Puissance</th
-							><th>Machines</th><th><span class="sr-only">Actions</span></th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each modelDrafts as draft (draft.id)}
-							<TableDraftRow animateRemoval={draft.animateRemoval}>
-								<td data-label="" class="mobile-card-hidden"
-									><Badge small tonal tertiary>Nouveau</Badge></td
-								>
-								<td data-label="Marque">
-									<Input
-										required
-										requiredFeedback={RequiredFeedback.None}
-										invalid={Boolean(draft.error && !draft.brand.trim())}
-										validationAttempt={draft.validationAttempt}
-										bind:value={draft.brand}
-										disabled={draft.busy}
-										aria-label="Marque du nouveau modèle"
-									/>
-								</td>
-								<td data-label="Modèle">
-									<Input
-										required
-										requiredFeedback={RequiredFeedback.None}
-										invalid={Boolean(draft.error && !draft.name.trim())}
-										validationAttempt={draft.validationAttempt}
-										bind:value={draft.name}
-										disabled={draft.busy}
-										aria-label="Nom du nouveau modèle"
-									/>
-								</td>
-								<td data-label="Maintenance"
-									><RatioInput
-										label="Coût de maintenance"
-										labelVisible={false}
-										required
-										bind:value={draft.maintenanceCostValue}
-										numeratorUnit="€"
-										bind:denominatorUnit={draft.maintenanceCostUnit}
-										numeratorUnits={priceUnits}
-										denominatorUnits={maintenanceCostUnits}
-									/></td
-								>
-								<td data-label="Durée de vie"
-									><MetricInput
-										label="Durée de vie"
-										labelVisible={false}
-										required
-										kind="time"
-										bind:value={draft.lifetimeValue}
-										bind:unit={draft.lifetimeUnit}
-										units={timeUnits}
-									/></td
-								>
-								<td data-label="Puissance"
-									><MetricInput
-										label="Puissance moyenne"
-										labelVisible={false}
-										required
-										kind="power"
-										bind:value={draft.averagePowerValue}
-										bind:unit={draft.averagePowerUnit}
-										units={powerUnits}
-									/></td
-								>
-								<td data-label="Machines">—</td>
-								<td data-label="" class="mobile-card-actions">
-									<IconAction
-										label="Créer le modèle"
-										tone="success"
-										disabled={draft.busy}
-										onclick={() => saveModelDraft(draft.id)}><Check size={18} /></IconAction
-									>
-									<IconAction
-										label="Annuler la création"
-										tone="error"
-										disabled={draft.busy}
-										onclick={() => cancelModelDraft(draft.id)}><X size={18} /></IconAction
-									>
-								</td>
-							</TableDraftRow>
-						{/each}
-						{#each models as model, index (model.id)}
-							{@const machineCount = modelMachineCounts[model.id] ?? 0}
+				<TableSection title="Modèles de machines" class="shadow-md">
+					{#snippet toolbar()}
+						<Button tone="tertiary" size="sm" onclick={addModelDraft}>
+							<Plus size={16} />Nouveau modèle
+						</Button>
+					{/snippet}
+					<Table responsiveCards class="min-w-[74rem] table-fixed">
+						<colgroup>
+							<col class="w-24" /><col class="w-32" /><col class="w-36" /><col class="w-52" /><col
+								class="w-44"
+							/><col class="w-44" /><col class="w-24" /><col class="w-24" />
+						</colgroup>
+						<thead>
 							<tr>
-								<td data-label="" class="mobile-card-hidden text-surface-700-300">{index + 1}</td>
-								{#if modelEdits[model.id]}
-									<td data-label="Marque"
-										><Input
+								<th>#</th><th>Marque</th><th>Modèle</th><th>Maintenance</th><th>Durée de vie</th><th
+									>Puissance</th
+								><th>Machines</th><th><span class="sr-only">Actions</span></th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each modelDrafts as draft (draft.id)}
+								<TableDraftRow animateRemoval={draft.animateRemoval}>
+									<td data-label="" class="mobile-card-hidden"
+										><Badge small tonal tertiary>Nouveau</Badge></td
+									>
+									<td data-label="Marque">
+										<Input
 											required
 											requiredFeedback={RequiredFeedback.None}
-											invalid={Boolean(
-												modelEdits[model.id].error && !modelEdits[model.id].brand.trim()
-											)}
-											validationAttempt={modelEdits[model.id].validationAttempt}
-											bind:value={modelEdits[model.id].brand}
-											disabled={modelEdits[model.id].busy}
-										/></td
-									>
-									<td data-label="Modèle"
-										><Input
+											invalid={Boolean(draft.error && !draft.brand.trim())}
+											validationAttempt={draft.validationAttempt}
+											bind:value={draft.brand}
+											disabled={draft.busy}
+											aria-label="Marque du nouveau modèle"
+										/>
+									</td>
+									<td data-label="Modèle">
+										<Input
 											required
 											requiredFeedback={RequiredFeedback.None}
-											invalid={Boolean(
-												modelEdits[model.id].error && !modelEdits[model.id].name.trim()
-											)}
-											validationAttempt={modelEdits[model.id].validationAttempt}
-											bind:value={modelEdits[model.id].name}
-											disabled={modelEdits[model.id].busy}
-										/></td
-									>
+											invalid={Boolean(draft.error && !draft.name.trim())}
+											validationAttempt={draft.validationAttempt}
+											bind:value={draft.name}
+											disabled={draft.busy}
+											aria-label="Nom du nouveau modèle"
+										/>
+									</td>
 									<td data-label="Maintenance"
 										><RatioInput
 											label="Coût de maintenance"
 											labelVisible={false}
 											required
-											bind:value={modelEdits[model.id].maintenanceCostValue}
+											bind:value={draft.maintenanceCostValue}
 											numeratorUnit="€"
-											bind:denominatorUnit={modelEdits[model.id].maintenanceCostUnit}
 											numeratorUnits={priceUnits}
-											denominatorUnits={maintenanceCostUnits}
+											denominatorUnits={yearUnits}
 										/></td
 									>
 									<td data-label="Durée de vie"
@@ -1285,10 +1223,8 @@
 											label="Durée de vie"
 											labelVisible={false}
 											required
-											kind="time"
-											bind:value={modelEdits[model.id].lifetimeValue}
-											bind:unit={modelEdits[model.id].lifetimeUnit}
-											units={timeUnits}
+											bind:value={draft.lifetimeValue}
+											units={yearUnits}
 										/></td
 									>
 									<td data-label="Puissance"
@@ -1296,58 +1232,133 @@
 											label="Puissance moyenne"
 											labelVisible={false}
 											required
-											kind="power"
-											bind:value={modelEdits[model.id].averagePowerValue}
-											bind:unit={modelEdits[model.id].averagePowerUnit}
-											units={powerUnits}
+											bind:value={draft.averagePowerValue}
+											units={wattUnits}
 										/></td
 									>
-								{:else}
-									<td data-label="Marque"><strong>{model.brand}</strong></td>
-									<td data-label="Modèle"><strong>{model.name}</strong></td>
-									<td data-label="Maintenance">{ratioLabel(model.maintenanceCost)}</td>
-									<td data-label="Durée de vie">{lifetimeLabel(model.lifetime)}</td>
-									<td data-label="Puissance">{metricLabel(model.averagePower)}</td>
-								{/if}
-								<td data-label="Machines">{machineCount}</td>
-								<td data-label="" class="mobile-card-actions">
-									{#if modelEdits[model.id]}
+									<td data-label="Machines">—</td>
+									<td data-label="" class="mobile-card-actions">
 										<IconAction
-											label={`Confirmer la modification de ${model.name}`}
+											label="Créer le modèle"
 											tone="success"
-											disabled={modelEdits[model.id].busy}
-											onclick={() => saveModelEdit(model.id)}><Check size={18} /></IconAction
+											disabled={draft.busy}
+											onclick={() => saveModelDraft(draft.id)}><Check size={18} /></IconAction
 										>
 										<IconAction
-											label={`Annuler la modification de ${model.name}`}
+											label="Annuler la création"
 											tone="error"
-											disabled={modelEdits[model.id].busy}
-											onclick={() => cancelModelEdit(model.id)}><X size={18} /></IconAction
+											disabled={draft.busy}
+											onclick={() => cancelModelDraft(draft.id)}><X size={18} /></IconAction
+										>
+									</td>
+								</TableDraftRow>
+							{/each}
+							{#each models as model, index (model.id)}
+								{@const machineCount = modelMachineCounts[model.id] ?? 0}
+								<tr>
+									<td data-label="" class="mobile-card-hidden text-surface-700-300">{index + 1}</td>
+									{#if modelEdits[model.id]}
+										<td data-label="Marque"
+											><Input
+												required
+												requiredFeedback={RequiredFeedback.None}
+												invalid={Boolean(
+													modelEdits[model.id].error && !modelEdits[model.id].brand.trim()
+												)}
+												validationAttempt={modelEdits[model.id].validationAttempt}
+												bind:value={modelEdits[model.id].brand}
+												disabled={modelEdits[model.id].busy}
+											/></td
+										>
+										<td data-label="Modèle"
+											><Input
+												required
+												requiredFeedback={RequiredFeedback.None}
+												invalid={Boolean(
+													modelEdits[model.id].error && !modelEdits[model.id].name.trim()
+												)}
+												validationAttempt={modelEdits[model.id].validationAttempt}
+												bind:value={modelEdits[model.id].name}
+												disabled={modelEdits[model.id].busy}
+											/></td
+										>
+										<td data-label="Maintenance"
+											><RatioInput
+												label="Coût de maintenance"
+												labelVisible={false}
+												required
+												bind:value={modelEdits[model.id].maintenanceCostValue}
+												numeratorUnit="€"
+												numeratorUnits={priceUnits}
+												denominatorUnits={yearUnits}
+											/></td
+										>
+										<td data-label="Durée de vie"
+											><MetricInput
+												label="Durée de vie"
+												labelVisible={false}
+												required
+												bind:value={modelEdits[model.id].lifetimeValue}
+												units={yearUnits}
+											/></td
+										>
+										<td data-label="Puissance"
+											><MetricInput
+												label="Puissance moyenne"
+												labelVisible={false}
+												required
+												bind:value={modelEdits[model.id].averagePowerValue}
+												units={wattUnits}
+											/></td
 										>
 									{:else}
-										<IconAction
-											label={`Modifier ${model.name}`}
-											onclick={() => beginModelEdit(model)}><Pencil size={18} /></IconAction
-										>
-										<IconAction
-											label={machineCount > 0
-												? `Impossible de supprimer ${model.name}, modèle utilisé`
-												: `Supprimer ${model.name}`}
-											tone="error"
-											disabled={saving || machineCount > 0}
-											onclick={() => deleteModel(model.id)}><Trash2 size={18} /></IconAction
-										>
+										<td data-label="Marque"><strong>{model.brand}</strong></td>
+										<td data-label="Modèle"><strong>{model.name}</strong></td>
+										<td data-label="Maintenance">{ratioLabel(model.maintenanceCost)}</td>
+										<td data-label="Durée de vie">{lifetimeLabel(model.lifetime)}</td>
+										<td data-label="Puissance">{powerLabel(model.averagePower)}</td>
 									{/if}
-								</td>
-							</tr>
-						{:else}
-							{#if modelDrafts.length === 0}<tr
-									><td colspan="8" class="py-10 text-center text-surface-700-300">Aucun modèle.</td
-									></tr
-								>{/if}
-						{/each}
-					</tbody>
-				</Table>
+									<td data-label="Machines">{machineCount}</td>
+									<td data-label="" class="mobile-card-actions">
+										{#if modelEdits[model.id]}
+											<IconAction
+												label={`Confirmer la modification de ${model.name}`}
+												tone="success"
+												disabled={modelEdits[model.id].busy}
+												onclick={() => saveModelEdit(model.id)}><Check size={18} /></IconAction
+											>
+											<IconAction
+												label={`Annuler la modification de ${model.name}`}
+												tone="error"
+												disabled={modelEdits[model.id].busy}
+												onclick={() => cancelModelEdit(model.id)}><X size={18} /></IconAction
+											>
+										{:else}
+											<IconAction
+												label={`Modifier ${model.name}`}
+												onclick={() => beginModelEdit(model)}><Pencil size={18} /></IconAction
+											>
+											<IconAction
+												label={machineCount > 0
+													? `Impossible de supprimer ${model.name}, modèle utilisé`
+													: `Supprimer ${model.name}`}
+												tone="error"
+												disabled={saving || machineCount > 0}
+												onclick={() => deleteModel(model.id)}><Trash2 size={18} /></IconAction
+											>
+										{/if}
+									</td>
+								</tr>
+							{:else}
+								{#if modelDrafts.length === 0}<tr
+										><td colspan="8" class="py-10 text-center text-surface-700-300"
+											>Aucun modèle.</td
+										></tr
+									>{/if}
+							{/each}
+						</tbody>
+					</Table>
+				</TableSection>
 			{/snippet}
 		</Modal>
 	{/if}

@@ -59,7 +59,7 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
             .as_array()
             .expect("machine changeset fields should be introspectable")
             .iter()
-            .all(|field| field["name"] != "purchaseCost")
+            .any(|field| field["name"] == "purchaseCost")
     );
     let machine_type = graphql(
         &http,

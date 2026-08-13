@@ -8,6 +8,7 @@
 		Metric,
 		Ratio,
 		type MetricDTO,
+		type PowerUnit,
 		type PriceUnit,
 		type RatioDTO,
 		type TimeUnit,
@@ -29,6 +30,11 @@
 	function lifetimeLabel(lifetime: MetricDTO<TimeUnit>) {
 		const yearly = Metric.from(lifetime).convertTo('y');
 		return `${yearly.value.toDecimalPlaces(2).toString()} ans`;
+	}
+
+	function powerLabel(power: MetricDTO<PowerUnit>) {
+		const watts = Metric.from(power).convertTo('W');
+		return `${watts.value.toDecimalPlaces(2).toString()} W`;
 	}
 
 	function usageCostLabel(cost: RatioDTO<PriceUnit, TimeUnit>) {
@@ -95,7 +101,7 @@
 				</div>
 				<div>
 					<dt class="text-sm text-surface-700-300">Puissance moyenne</dt>
-					<dd class="mt-1 font-semibold">{metricLabel(data.machine.model.averagePower)}</dd>
+					<dd class="mt-1 font-semibold">{powerLabel(data.machine.model.averagePower)}</dd>
 				</div>
 				<div>
 					<dt class="text-sm text-surface-700-300">Durée de vie</dt>
