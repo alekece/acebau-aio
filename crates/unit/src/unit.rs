@@ -2,6 +2,8 @@ use std::{fmt, marker::PhantomData};
 
 use snafu::Snafu;
 
+use crate::Decimal;
+
 #[derive(Debug, Clone, PartialEq, Eq, Snafu)]
 #[snafu(display("unknown unit '{unit}'"))]
 pub struct UnitParseError {
@@ -20,7 +22,7 @@ pub struct Second;
 /// and providing a method to get the conversion factor to a canonical unit.
 pub trait Unit: Copy + Default + ToString {
     /// Returns the conversion factor to a canonical unit.
-    fn factor(&self) -> f32;
+    fn factor(&self) -> Decimal;
 
     /// Indicates whether the unit is unitless.
     fn is_unitless() -> bool {
@@ -47,8 +49,8 @@ impl<T> Default for Unitless<T> {
     }
 }
 impl<T> Unit for Unitless<T> {
-    fn factor(&self) -> f32 {
-        1.
+    fn factor(&self) -> Decimal {
+        Decimal::ONE
     }
 }
 

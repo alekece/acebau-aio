@@ -20,7 +20,7 @@ pub enum UnitShape<'a> {
 pub struct Variant {
     ident: Ident,
     symbol: String,
-    factor: f32,
+    factor: u32,
     #[darling(default)]
     plural: Option<String>,
 }
@@ -34,7 +34,7 @@ impl Variant {
         &self.symbol
     }
 
-    pub fn factor(&self) -> f32 {
+    pub fn factor(&self) -> u32 {
         self.factor
     }
 

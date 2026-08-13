@@ -21,11 +21,16 @@ impl ToTokens for ConversionFns<'_> {
         let fns = self.variants.iter().map(|variant| {
             let variant_ident = variant.ident();
             let from_ident = format_ident!("from_{}", variant.plural());
+            let try_from_ident = format_ident!("try_from_{}", variant.plural());
             let to_ident = format_ident!("to_{}", variant.plural());
 
             quote! {
-                pub fn #from_ident(value: f32) -> Self {
+                pub fn #from_ident<V: ::std::convert::Into<::acebau_unit::Decimal>>(value: V) -> Self {
                     Self::with_unit(value, #ident::#variant_ident)
+                }
+
+                pub fn #try_from_ident(value: f64) -> ::std::result::Result<Self, ::acebau_unit::MetricError> {
+                    Self::try_with_unit(value, #ident::#variant_ident)
                 }
 
                 pub fn #to_ident(self) -> Self {

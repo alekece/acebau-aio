@@ -22,9 +22,9 @@ impl ToTokens for UnitImpl<'_> {
 
         tokens.extend(quote! {
             impl ::acebau_unit::unit::Unit for #ident {
-                fn factor(&self) -> f32 {
+                fn factor(&self) -> ::acebau_unit::Decimal {
                     match self {
-                        #(Self::#variant_idents => #factors,)*
+                        #(Self::#variant_idents => ::acebau_unit::Decimal::from(#factors),)*
                     }
                 }
             }
