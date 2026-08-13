@@ -1,4 +1,4 @@
-import type { Tone } from '$lib/types';
+import type { Tone } from '$lib/components/ui/presets';
 
 export type ProductionChoice = { id: string; label: string; detail?: string };
 export type PieceChoice = ProductionChoice & { capacity: number };

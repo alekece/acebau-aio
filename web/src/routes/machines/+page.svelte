@@ -70,7 +70,6 @@
 		modelId: string;
 		surname: string;
 		purchaseCost: string;
-		state: Machine['state'];
 	};
 
 	let { data }: PageProps = $props();
@@ -177,7 +176,7 @@
 	}
 
 	function emptyMachine(): MachineForm {
-		return { modelId: '', surname: '', purchaseCost: '', state: 'available' };
+		return { modelId: '', surname: '', purchaseCost: '' };
 	}
 
 	async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
@@ -301,6 +300,7 @@
 			await gql(`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`, {
 				input: {
 					...machineForm,
+					state: 'available',
 					purchaseCost: { value: machineForm.purchaseCost, unit: '€' },
 					modelId: result.createMachineModel.id,
 					printingTime: { value: '0', unit: 'h' }
@@ -322,6 +322,7 @@
 			await gql(`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`, {
 				input: {
 					...machineForm,
+					state: 'available',
 					purchaseCost: { value: machineForm.purchaseCost, unit: '€' },
 					printingTime: { value: '0', unit: 'h' }
 				}
@@ -500,45 +501,51 @@
 								Ces informations seront réutilisées pour toutes les machines de ce type.
 							</p>
 						</div>
-						<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
-							<label class="label"
+						<div class="grid grid-cols-6 gap-3">
+							<label class="col-span-3 label max-[600px]:col-span-6"
 								>Marque<Input
 									required
 									bind:value={modelForm.brand}
 									placeholder="Ex. Prusa"
 								/></label
 							>
-							<label class="label"
+							<label class="col-span-3 label max-[600px]:col-span-6"
 								>Nom<Input required bind:value={modelForm.name} placeholder="Ex. MK4" /></label
 							>
-							<RatioInput
-								label="Coût de maintenance"
-								required
-								requiredFeedback
-								bind:value={modelForm.maintenanceCostValue}
-								numeratorUnit="€"
-								bind:denominatorUnit={modelForm.maintenanceCostUnit}
-								numeratorUnits={priceUnits}
-								denominatorUnits={maintenanceCostUnits}
-							/>
-							<MetricInput
-								label="Durée de vie"
-								required
-								requiredFeedback
-								kind="time"
-								bind:value={modelForm.lifetimeValue}
-								bind:unit={modelForm.lifetimeUnit}
-								units={timeUnits}
-							/>
-							<MetricInput
-								label="Puissance moyenne"
-								required
-								requiredFeedback
-								kind="power"
-								bind:value={modelForm.averagePowerValue}
-								bind:unit={modelForm.averagePowerUnit}
-								units={powerUnits}
-							/>
+							<div class="col-span-2 max-[600px]:col-span-6">
+								<RatioInput
+									label="Coût de maintenance"
+									required
+									requiredFeedback
+									bind:value={modelForm.maintenanceCostValue}
+									numeratorUnit="€"
+									bind:denominatorUnit={modelForm.maintenanceCostUnit}
+									numeratorUnits={priceUnits}
+									denominatorUnits={maintenanceCostUnits}
+								/>
+							</div>
+							<div class="col-span-2 max-[600px]:col-span-6">
+								<MetricInput
+									label="Durée de vie"
+									required
+									requiredFeedback
+									kind="time"
+									bind:value={modelForm.lifetimeValue}
+									bind:unit={modelForm.lifetimeUnit}
+									units={timeUnits}
+								/>
+							</div>
+							<div class="col-span-2 max-[600px]:col-span-6">
+								<MetricInput
+									label="Puissance moyenne"
+									required
+									requiredFeedback
+									kind="power"
+									bind:value={modelForm.averagePowerValue}
+									bind:unit={modelForm.averagePowerUnit}
+									units={powerUnits}
+								/>
+							</div>
 						</div>
 						<div class="flex justify-end border-t border-surface-300-700 pt-5">
 							<Button type="submit" tone="tertiary">Continuer</Button>
@@ -574,15 +581,7 @@
 								bind:value={machineForm.purchaseCost}
 								unit="€"
 								units={priceUnits}
-							/><label class="label"
-								>État<Input as="select" bind:value={machineForm.state}
-									><option value="available">Disponible</option><option value="running"
-										>En production</option
-									><option value="maintenance">Maintenance</option><option value="broken"
-										>En panne</option
-									></Input
-								></label
-							>
+							/>
 						</div>
 						<div class="flex justify-between gap-2.5">
 							<Button
@@ -620,7 +619,7 @@
 								</p>
 								<strong class="block text-base text-surface-900-100">{machineForm.surname}</strong
 								><small class="text-surface-700-300"
-									>{machineStateLabel(machineForm.state)} · {machineForm.purchaseCost}€</small
+									>{machineStateLabel('available')} · {machineForm.purchaseCost}€</small
 								>
 							</div>
 						</div>
@@ -856,35 +855,46 @@
 					<h3 class="text-lg font-semibold text-surface-900-100">
 						{editingModelId ? 'Modifier le modèle' : 'Ajouter un modèle'}
 					</h3>
-					<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
-						<label class="label">Marque<Input required bind:value={modelForm.brand} /></label><label
-							class="label">Nom<Input required bind:value={modelForm.name} /></label
-						><RatioInput
-							label="Coût de maintenance"
-							required
-							requiredFeedback
-							bind:value={modelForm.maintenanceCostValue}
-							numeratorUnit="€"
-							bind:denominatorUnit={modelForm.maintenanceCostUnit}
-							numeratorUnits={priceUnits}
-							denominatorUnits={maintenanceCostUnits}
-						/><MetricInput
-							label="Durée de vie"
-							required
-							requiredFeedback
-							kind="time"
-							bind:value={modelForm.lifetimeValue}
-							bind:unit={modelForm.lifetimeUnit}
-							units={timeUnits}
-						/><MetricInput
-							label="Puissance moyenne"
-							required
-							requiredFeedback
-							kind="power"
-							bind:value={modelForm.averagePowerValue}
-							bind:unit={modelForm.averagePowerUnit}
-							units={powerUnits}
-						/>
+					<div class="grid grid-cols-6 gap-3">
+						<label class="col-span-3 label max-[600px]:col-span-6"
+							>Marque<Input required bind:value={modelForm.brand} /></label
+						><label class="col-span-3 label max-[600px]:col-span-6"
+							>Nom<Input required bind:value={modelForm.name} /></label
+						>
+						<div class="col-span-2 max-[600px]:col-span-6">
+							<RatioInput
+								label="Coût de maintenance"
+								required
+								requiredFeedback
+								bind:value={modelForm.maintenanceCostValue}
+								numeratorUnit="€"
+								bind:denominatorUnit={modelForm.maintenanceCostUnit}
+								numeratorUnits={priceUnits}
+								denominatorUnits={maintenanceCostUnits}
+							/>
+						</div>
+						<div class="col-span-2 max-[600px]:col-span-6">
+							<MetricInput
+								label="Durée de vie"
+								required
+								requiredFeedback
+								kind="time"
+								bind:value={modelForm.lifetimeValue}
+								bind:unit={modelForm.lifetimeUnit}
+								units={timeUnits}
+							/>
+						</div>
+						<div class="col-span-2 max-[600px]:col-span-6">
+							<MetricInput
+								label="Puissance moyenne"
+								required
+								requiredFeedback
+								kind="power"
+								bind:value={modelForm.averagePowerValue}
+								bind:unit={modelForm.averagePowerUnit}
+								units={powerUnits}
+							/>
+						</div>
 					</div>
 					<div class="flex justify-end gap-2.5">
 						<Button variant="outlined" tone="secondary" type="button" onclick={addModel}
@@ -947,15 +957,7 @@
 							bind:value={machineForm.purchaseCost}
 							unit="€"
 							units={priceUnits}
-						/><label class="label"
-							>État<Input as="select" bind:value={machineForm.state}
-								><option value="available">Disponible</option><option value="running"
-									>En production</option
-								><option value="maintenance">Maintenance</option><option value="broken"
-									>En panne</option
-								></Input
-							></label
-						>
+						/>
 					</div>
 					<div class="flex justify-end gap-2.5">
 						<Button variant="outlined" tone="secondary" onclick={closeModal}>Annuler</Button><Button

@@ -11,7 +11,7 @@
 	import PageShell from '$lib/components/ui/PageShell.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
 	import TableSection from '$lib/components/ui/TableSection.svelte';
-	import { Tone } from '$lib/types';
+	import { Tone } from '$lib/components/ui/presets';
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
 	import ProductionEditModal from '$lib/components/production/ProductionEditModal.svelte';
 	import ProductionBundleRows from '$lib/components/production/ProductionBundleRows.svelte';

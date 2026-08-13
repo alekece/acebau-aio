@@ -11,7 +11,7 @@
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Kpi from '$lib/components/ui/Kpi.svelte';
-	import { Tone } from '$lib/types';
+	import { Tone } from '$lib/components/ui/presets';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 

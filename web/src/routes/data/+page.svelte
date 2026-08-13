@@ -5,7 +5,7 @@
 	import Kpi from '$lib/components/ui/Kpi.svelte';
 	import Input from '$lib/components/ui/forms/Input.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
-	import { Tone } from '$lib/types';
+	import { Tone } from '$lib/components/ui/presets';
 	import type { PageProps } from './$types';
 	let { data }: PageProps = $props();
 	let period = $state('Cette année');

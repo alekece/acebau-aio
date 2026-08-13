@@ -22,7 +22,7 @@
 	import OnboardingPanel from '$lib/components/ui/OnboardingPanel.svelte';
 	import PageShell from '$lib/components/ui/PageShell.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
-	import { Tone } from '$lib/types';
+	import { Tone } from '$lib/components/ui/presets';
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
 	import SupplyEditModal from '$lib/components/inventory/SupplyEditModal.svelte';
 	import type { PageProps } from './$types';

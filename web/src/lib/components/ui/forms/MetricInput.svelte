@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getMetricDefaults, type MetricKind } from '$lib/settings/metric-defaults';
 	import Decimal from 'decimal.js';
+	import Badge from '$lib/components/ui/Badge.svelte';
 
 	export type MetricUnit = { value: string; label: string };
 
@@ -57,7 +58,8 @@
 		if (!trimmed) return isRequired ? 'Saisissez une valeur.' : '';
 
 		try {
-			if (new Decimal(trimmed).lt(new Decimal(minimum))) return `La valeur minimale est ${minimum}.`;
+			if (new Decimal(trimmed).lt(new Decimal(minimum)))
+				return `La valeur minimale est ${minimum}.`;
 			return '';
 		} catch {
 			return 'Saisissez un nombre décimal valide.';
@@ -74,45 +76,46 @@
 </script>
 
 <label class="label">
-	<span>{label}</span>
+	<span class="flex items-center justify-between gap-2">
+		<span>{label}</span>
+		{#if required && requiredFeedback}
+			<Badge small tonal surface class="!bg-surface-500/10">Requis</Badge>
+		{/if}
+	</span>
 	<div
 		class={`grid grid-cols-[minmax(0,1fr)_auto] rounded-base shadow-sm focus-within:ring-2 ${touched && validationMessage ? 'ring-2 ring-error-500 focus-within:ring-error-500/30' : 'focus-within:ring-tertiary-500/20'}`}
 	>
 		<input
 			bind:this={inputElement}
-			class={`input min-h-[42px] !rounded-r-none border bg-surface-50-950 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
+			class={`input !rounded-r-none border bg-surface-50-950 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
 			type="text"
 			inputmode="decimal"
 			aria-invalid={touched && validationMessage ? 'true' : undefined}
-			data-required-feedback={required && requiredFeedback ? true : undefined}
 			{required}
-			value={value}
+			{value}
 			oninput={updateValue}
 			onfocus={() => (touched = false)}
 			onblur={() => (touched = true)}
 		/>
 		{#if units.length === 1}
 			<span
-				class={`grid min-h-[42px] min-w-12 place-items-center !rounded-l-none rounded-r-base border !border-l-0 bg-surface-100-900 px-2.5 py-2 font-medium text-surface-950-50 ${touched && validationMessage ? 'border-error-500' : 'border-surface-300-700'}`}
+				class={`grid min-w-12 place-items-center !rounded-l-none rounded-r-base border !border-l-0 bg-surface-100-900 px-2.5 py-2 font-medium text-surface-950-50 ${touched && validationMessage ? 'border-error-500' : 'border-surface-300-700'}`}
 				aria-label={`Unité pour ${label}`}>{units[0].label}</span
 			>
 		{:else}
 			<select
-				class={`select min-h-[42px] min-w-20 !rounded-l-none border !border-l-0 bg-surface-100-900 py-2 pr-8 pl-2.5 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
+				class={`select min-w-20 !rounded-l-none border !border-l-0 bg-surface-100-900 py-2 pr-8 pl-2.5 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
 				aria-label={`Unité pour ${label}`}
 				value={resolvedUnit}
 				onchange={updateUnit}
 			>
-				{#each units as option (option.value)}<option value={option.value}
-					>{option.label}</option
-				>{/each}
+				{#each units as option (option.value)}<option value={option.value}>{option.label}</option
+					>{/each}
 			</select>
 		{/if}
 	</div>
 	{#if touched && validationMessage}
-		<small class="text-xs font-normal text-error-700-300" role="alert"
-			>{validationMessage}</small
-		>
+		<small class="text-xs font-normal text-error-700-300" role="alert">{validationMessage}</small>
 	{/if}
 	{#if hint}<small class="text-xs font-normal text-surface-700-300">{hint}</small>{/if}
 </label>

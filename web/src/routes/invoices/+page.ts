@@ -1,5 +1,5 @@
 import { graphqlOrFallback } from '$lib/api/graphql';
-import { Tone } from '$lib/types';
+import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type InvoiceResult = {

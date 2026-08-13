@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import { Tone } from '$lib/types';
+	import { Tone } from '$lib/components/ui/presets';
 
 	type MachineState = 'available' | 'running' | 'maintenance' | 'broken';
 	let { state }: { state: MachineState } = $props();

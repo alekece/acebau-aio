@@ -1,6 +1,6 @@
 import { graphqlOrFallback } from '$lib/api/graphql';
 import type { ProductionBundle } from '$lib/production/types';
-import { Tone } from '$lib/types';
+import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type ProductionResult = {

@@ -6,7 +6,7 @@
 	import Input from '$lib/components/ui/forms/Input.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
-	import { Tone } from '$lib/types';
+	import { Tone } from '$lib/components/ui/presets';
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
 	import ExpenseEditModal from '$lib/components/finance/ExpenseEditModal.svelte';
 	import type { PageProps } from './$types';

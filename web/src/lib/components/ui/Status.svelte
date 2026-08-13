@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { Tone } from '$lib/types';
+	import { Tone } from './presets';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import Check from '@lucide/svelte/icons/check';
 	import Minus from '@lucide/svelte/icons/minus';

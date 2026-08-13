@@ -1,4 +1,4 @@
-import { Tone } from '$lib/types';
+import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = () => ({

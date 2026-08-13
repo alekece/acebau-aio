@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 
 	type InputElement = 'input' | 'select';
 
@@ -29,23 +30,19 @@
 </script>
 
 {#if as === 'select'}
-	<select
-		class={classes}
-		{value}
-		data-required-feedback={requiredFeedback && rest.required ? true : undefined}
-		{...rest}
-		oninput={updateValue}
-		onchange={updateValue}
-	>
+	{#if requiredFeedback && rest.required}
+		<Badge small tonal surface class="absolute top-0 right-0 !bg-surface-500/10" data-required-badge
+			>Requis</Badge
+		>
+	{/if}
+	<select class={classes} {value} {...rest} oninput={updateValue} onchange={updateValue}>
 		{@render children?.()}
 	</select>
 {:else}
-	<input
-		class={classes}
-		{value}
-		data-required-feedback={requiredFeedback && rest.required ? true : undefined}
-		{...rest}
-		oninput={updateValue}
-		onchange={updateValue}
-	/>
+	{#if requiredFeedback && rest.required}
+		<Badge small tonal surface class="absolute top-0 right-0 !bg-surface-500/10" data-required-badge
+			>Requis</Badge
+		>
+	{/if}
+	<input class={classes} {value} {...rest} oninput={updateValue} onchange={updateValue} />
 {/if}
