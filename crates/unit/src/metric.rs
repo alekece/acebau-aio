@@ -270,11 +270,11 @@ mod sqlx {
 
 #[cfg(feature = "graphql")]
 mod graphql {
-    use std::{borrow::Cow, str::FromStr};
+    use std::{borrow::Cow, marker::PhantomData, str::FromStr};
 
     use async_graphql::{
         ContextSelectionSet, InputObject, InputType, InputValueError, InputValueResult, OutputType, Positioned,
-        ServerResult, Value, indexmap::IndexMap, parser::types::Field, registry::Registry,
+        ServerResult, SimpleObject, TypeName, Value, indexmap::IndexMap, parser::types::Field, registry::Registry,
     };
 
     use super::*;
@@ -284,6 +284,21 @@ mod graphql {
     struct MetricInput {
         value: Decimal,
         unit: String,
+    }
+
+    #[derive(SimpleObject)]
+    #[graphql(name_type)]
+    struct MetricOutput<T: Unit + Send + Sync> {
+        value: Decimal,
+        unit: String,
+        #[graphql(skip)]
+        marker: PhantomData<T>,
+    }
+
+    impl<T: Unit + Send + Sync> TypeName for MetricOutput<T> {
+        fn type_name() -> Cow<'static, str> {
+            format!("{}Metric", T::NAME).into()
+        }
     }
 
     impl<T> InputType for Metric<T>
@@ -330,15 +345,21 @@ mod graphql {
         T: Unit + Send + Sync,
     {
         fn type_name() -> Cow<'static, str> {
-            "String".into()
+            <MetricOutput<T> as OutputType>::type_name()
         }
 
         fn create_type_info(registry: &mut Registry) -> String {
-            <String as OutputType>::create_type_info(registry)
+            MetricOutput::<T>::create_type_info(registry)
         }
 
-        async fn resolve(&self, _: &ContextSelectionSet<'_>, _: &Positioned<Field>) -> ServerResult<Value> {
-            Ok(Value::String(self.to_string()))
+        async fn resolve(&self, ctx: &ContextSelectionSet<'_>, field: &Positioned<Field>) -> ServerResult<Value> {
+            MetricOutput::<T> {
+                value: self.value,
+                unit: self.unit.to_string(),
+                marker: PhantomData,
+            }
+            .resolve(ctx, field)
+            .await
         }
     }
 
@@ -353,6 +374,13 @@ mod graphql {
             assert_eq!(<Price as InputType>::type_name(), "PriceMetricInput");
             assert_eq!(<Time as InputType>::type_name(), "TimeMetricInput");
             assert_eq!(<Power as InputType>::type_name(), "PowerMetricInput");
+        }
+
+        #[test]
+        fn graphql_output_names_include_the_unit_name() {
+            assert_eq!(<Price as OutputType>::type_name(), "PriceMetric");
+            assert_eq!(<Time as OutputType>::type_name(), "TimeMetric");
+            assert_eq!(<Power as OutputType>::type_name(), "PowerMetric");
         }
     }
 }

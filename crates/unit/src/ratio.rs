@@ -241,11 +241,11 @@ mod sqlx {
 
 #[cfg(feature = "graphql")]
 mod graphql {
-    use std::{borrow::Cow, str::FromStr};
+    use std::{borrow::Cow, marker::PhantomData, str::FromStr};
 
     use async_graphql::{
         ContextSelectionSet, InputObject, InputType, InputValueError, InputValueResult, OutputType, Positioned,
-        ServerResult, Value, indexmap::IndexMap, parser::types::Field, registry::Registry,
+        ServerResult, SimpleObject, TypeName, Value, indexmap::IndexMap, parser::types::Field, registry::Registry,
     };
 
     use super::*;
@@ -256,6 +256,22 @@ mod graphql {
         value: Decimal,
         numerator_unit: String,
         denominator_unit: String,
+    }
+
+    #[derive(SimpleObject)]
+    #[graphql(name_type)]
+    struct RatioOutput<T: Unit + Send + Sync, U: Unit + Send + Sync> {
+        value: Decimal,
+        numerator_unit: String,
+        denominator_unit: String,
+        #[graphql(skip)]
+        marker: PhantomData<(T, U)>,
+    }
+
+    impl<T: Unit + Send + Sync, U: Unit + Send + Sync> TypeName for RatioOutput<T, U> {
+        fn type_name() -> Cow<'static, str> {
+            format!("{}Per{}Ratio", T::NAME, U::NAME).into()
+        }
     }
 
     impl<T, U> InputType for Ratio<T, U>
@@ -306,15 +322,22 @@ mod graphql {
         U: Unit + Send + Sync,
     {
         fn type_name() -> Cow<'static, str> {
-            "String".into()
+            <RatioOutput<T, U> as OutputType>::type_name()
         }
 
         fn create_type_info(registry: &mut Registry) -> String {
-            <String as OutputType>::create_type_info(registry)
+            RatioOutput::<T, U>::create_type_info(registry)
         }
 
-        async fn resolve(&self, _: &ContextSelectionSet<'_>, _: &Positioned<Field>) -> ServerResult<Value> {
-            Ok(Value::String(self.to_string()))
+        async fn resolve(&self, ctx: &ContextSelectionSet<'_>, field: &Positioned<Field>) -> ServerResult<Value> {
+            RatioOutput::<T, U> {
+                value: self.get(),
+                numerator_unit: self.numerator_unit().to_string(),
+                denominator_unit: self.denominator_unit().to_string(),
+                marker: PhantomData,
+            }
+            .resolve(ctx, field)
+            .await
         }
     }
 
@@ -327,6 +350,11 @@ mod graphql {
         #[test]
         fn graphql_input_name_includes_both_unit_names() {
             assert_eq!(<PricePerTime as InputType>::type_name(), "PricePerTimeRatioInput");
+        }
+
+        #[test]
+        fn graphql_output_name_includes_both_unit_names() {
+            assert_eq!(<PricePerTime as OutputType>::type_name(), "PricePerTimeRatio");
         }
     }
 }

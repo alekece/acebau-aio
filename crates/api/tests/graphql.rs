@@ -42,6 +42,16 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
     let second = create_machine_model(&http, &endpoint, &prefix, "two").await;
     let third = create_machine_model(&http, &endpoint, &prefix, "three").await;
     assert_eq!(first["name"], "one");
+    assert_eq!(first["purchaseCost"], json!({ "value": "100", "unit": "€" }));
+    assert_eq!(
+        first["maintenanceCost"],
+        json!({
+            "value": "0.0833333333333333333333333333",
+            "numeratorUnit": "€",
+            "denominatorUnit": "min"
+        })
+    );
+    assert_eq!(first["lifetime"], json!({ "value": "600", "unit": "min" }));
     assert_eq!(third["name"], "three");
 
     let fetched = graphql(
@@ -116,7 +126,13 @@ async fn create_machine_model(http: &reqwest::Client, endpoint: &str, brand: &st
         http,
         endpoint,
         r#"mutation($input: MachineModelInput!) {
-            createMachineModel(input: $input) { id name }
+            createMachineModel(input: $input) {
+                id name
+                purchaseCost { value unit }
+                maintenanceCost { value numeratorUnit denominatorUnit }
+                lifetime { value unit }
+                averagePower { value unit }
+            }
         }"#,
         json!({ "input": machine_model_input(brand, name) }),
     )
