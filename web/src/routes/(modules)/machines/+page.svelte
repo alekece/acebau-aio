@@ -61,6 +61,7 @@
 		modelId: string;
 		purchaseCost: MetricDTO<PriceUnit>;
 		printingTime: MetricDTO<TimeUnit>;
+		usageCost: RatioDTO<PriceUnit, TimeUnit>;
 		state: MachineState;
 		model: MachineModel;
 	};
@@ -166,7 +167,6 @@
 		machines.filter((machine) => machine.state === 'maintenance' || machine.state === 'broken')
 			.length
 	);
-	const hardcodedPowerCost = '0,25 €/h';
 	const hardcodedNextMaintenance = 'À planifier';
 	const onboardingSteps = ['Créer un modèle', 'Ajouter une machine', 'Vérifier les informations'];
 	const timeUnits = [
@@ -214,6 +214,11 @@
 	function lifetimeLabel(lifetime: MetricDTO<TimeUnit>) {
 		const yearly = Metric.from(lifetime).convertTo('y');
 		return `${yearly.value.toDecimalPlaces(2).toString()} ans`;
+	}
+
+	function metricUsageCostLabel(cost: RatioDTO<PriceUnit, TimeUnit>) {
+		const hourly = Ratio.from(cost).convertTo('€', 'h');
+		return `${hourly.value.toDecimalPlaces(4).toString()}€/h`;
 	}
 
 	function modelInput(form: ModelForm) {
@@ -268,7 +273,8 @@
 				`query MachineTablePage($page: Int!, $pageSize: Int!) {
 					machines(page: $page, pageSize: $pageSize) {
 						items {
-							id surname modelId purchaseCost { value unit } printingTime { value unit } state
+							id surname modelId purchaseCost { value unit } printingTime { value unit }
+							usageCost { value numeratorUnit denominatorUnit } state
 							model {
 								id brand name
 								maintenanceCost { value numeratorUnit denominatorUnit }
@@ -401,7 +407,8 @@
 			const result = await gql<{ createMachine: Machine }>(
 				`mutation($input: MachineInput!) {
 					createMachine(input: $input) {
-						id surname modelId purchaseCost { value unit } printingTime { value unit } state
+						id surname modelId purchaseCost { value unit } printingTime { value unit }
+						usageCost { value numeratorUnit denominatorUnit } state
 						model {
 							id brand name
 							maintenanceCost { value numeratorUnit denominatorUnit }
@@ -939,7 +946,7 @@
 				<thead
 					><tr
 						><th>#</th><th>Machine</th><th>Modèle</th><th>État</th><th>Temps d’impression</th><th
-							>Coût effectif</th
+							>Coût d’usage</th
 						><th>Prochaine maintenance</th><th><span class="sr-only">Actions</span></th></tr
 					></thead
 				>
@@ -1078,7 +1085,7 @@
 								{:else}<MachineStatus state={machine.state} />{/if}</td
 							>
 							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
-							<td data-label="Coût effectif">{hardcodedPowerCost}</td>
+							<td data-label="Coût d’usage">{metricUsageCostLabel(machine.usageCost)}</td>
 							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
 							<td data-label="" class="mobile-card-actions">
 								{#if machineEdits[machine.id]}

@@ -73,6 +73,7 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
         .expect("machine fields should be introspectable");
     assert!(machine_fields.iter().any(|field| field["name"] == "purchaseCost"));
     assert!(machine_fields.iter().any(|field| field["name"] == "model"));
+    assert!(machine_fields.iter().any(|field| field["name"] == "usageCost"));
 
     let first = create_machine_model(&http, &endpoint, &prefix, "one").await;
     let second = create_machine_model(&http, &endpoint, &prefix, "two").await;

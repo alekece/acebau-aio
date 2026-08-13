@@ -30,6 +30,11 @@
 		const yearly = Metric.from(lifetime).convertTo('y');
 		return `${yearly.value.toDecimalPlaces(2).toString()} ans`;
 	}
+
+	function usageCostLabel(cost: RatioDTO<PriceUnit, TimeUnit>) {
+		const hourly = Ratio.from(cost).convertTo('€', 'h');
+		return `${hourly.value.toDecimalPlaces(4).toString()} €/h`;
+	}
 </script>
 
 <svelte:head><title>{data.machine.surname} — Machines — Acebau</title></svelte:head>
@@ -65,6 +70,10 @@
 				<div>
 					<dt class="text-sm text-surface-700-300">Temps d’impression enregistré</dt>
 					<dd class="mt-1 font-semibold">{metricLabel(data.machine.printingTime)}</dd>
+				</div>
+				<div>
+					<dt class="text-sm text-surface-700-300">Coût d’usage</dt>
+					<dd class="mt-1 font-semibold">{usageCostLabel(data.machine.usageCost)}</dd>
 				</div>
 				<div>
 					<dt class="text-sm text-surface-700-300">Identifiant</dt>

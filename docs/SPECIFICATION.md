@@ -317,13 +317,19 @@ Variant base cost:
 
 Channel cost adds the relevant selling fees. Percentage fees are applied to the selling price; fixed fees are added per sale. Annual or monthly subscriptions are represented by an empirical overhead percentage for margin estimation while the real subscription remains a Finance expense.
 
-### 5.9 Machine hourly cost
+### 5.9 Machine usage and production-equipment cost
 
-Default calculated rate:
+Default machine usage rate:
 
-`(purchase + setup + expected lifetime maintenance) ÷ expected lifetime printing hours + electricity consumption × electricity rate`
+`(purchase + expected lifetime maintenance) ÷ expected lifetime printing hours`
 
-The calculated rate can be overridden per machine. Both calculated and effective values remain visible.
+Purchase cost includes setup cost. Expected lifetime printing hours are the model lifetime converted to hours and multiplied by a 50% default utilisation rate. For example, continuous operation every hour of every day would be 100% utilisation.
+
+Electricity remains a separate production-environment cost:
+
+`average electricity consumption × electricity rate`
+
+The production-equipment cost is the machine usage rate plus the electricity cost. The calculated machine usage rate can be overridden per machine. Both calculated and effective values remain visible when an override exists.
 
 ### 5.10 Selling-price suggestion
 

@@ -66,6 +66,21 @@ impl ToTokens for OutputImpl<'_> {
 			})
 		});
 
+        let resolvers = self.0.resolvers().map(|resolver| {
+            let name = resolver.name();
+            let method = resolver.method();
+            let ty = resolver.ty();
+
+            quote! {
+                async fn #name(
+                    &self,
+                    ctx: &::async_graphql::Context<'_>,
+                ) -> ::async_graphql::Result<#ty> {
+                    self.#method(ctx).await
+                }
+            }
+        });
+
         tokens.extend(quote! {
             impl ::async_graphql::TypeName for #ident {
                 fn type_name() -> ::std::borrow::Cow<'static, str> {
@@ -77,6 +92,7 @@ impl ToTokens for OutputImpl<'_> {
             impl #ident {
                 #(#getter_fns)*
                 #(#relationship_fns)*
+                #(#resolvers)*
             }
         });
     }

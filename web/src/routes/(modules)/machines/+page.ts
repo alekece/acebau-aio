@@ -17,6 +17,7 @@ type Machine = {
 	modelId: string;
 	purchaseCost: MetricDTO<PriceUnit>;
 	printingTime: MetricDTO<TimeUnit>;
+	usageCost: RatioDTO<PriceUnit, TimeUnit>;
 	state: 'available' | 'running' | 'maintenance' | 'broken';
 	model: MachineModel;
 };
@@ -55,7 +56,8 @@ export const load: PageLoad = async ({ fetch }) => {
 			}
 			machines(page: $page, pageSize: $pageSize) {
 				items {
-					id surname modelId purchaseCost { value unit } printingTime { value unit } state
+					id surname modelId purchaseCost { value unit } printingTime { value unit }
+					usageCost { value numeratorUnit denominatorUnit } state
 					model {
 						id brand name
 						maintenanceCost { value numeratorUnit denominatorUnit }

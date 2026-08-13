@@ -213,6 +213,7 @@ dependencies = [
  "async-graphql",
  "chrono",
  "serde",
+ "snafu",
  "sqlx",
  "strum 0.27.2",
  "uuid",

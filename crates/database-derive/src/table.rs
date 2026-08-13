@@ -89,6 +89,8 @@ pub struct Table {
     data: Data<Ignored, Field>,
     #[darling(default)]
     setter: Option<SetterOptions>,
+    #[darling(rename = "resolver", multiple)]
+    resolvers: Vec<Resolver>,
     #[darling(skip)]
     changeset_ident: Option<Ident>,
 }
@@ -137,10 +139,35 @@ impl Table {
         fields.iter()
     }
 
+    pub fn resolvers(&self) -> impl Iterator<Item = &Resolver> {
+        self.resolvers.iter()
+    }
+
     fn finalize(mut self) -> Result<Self, Error> {
         self.changeset_ident = Some(format_ident!("{}Changeset", self.ident));
 
         Ok(self)
+    }
+}
+
+#[derive(FromMeta)]
+pub struct Resolver {
+    name: Ident,
+    method: Ident,
+    ty: Type,
+}
+
+impl Resolver {
+    pub fn name(&self) -> &Ident {
+        &self.name
+    }
+
+    pub fn method(&self) -> &Ident {
+        &self.method
+    }
+
+    pub fn ty(&self) -> &Type {
+        &self.ty
     }
 }
 
@@ -167,5 +194,37 @@ impl ToTokens for Table {
             #query_struct
             #repository_impl
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use darling::FromDeriveInput;
+    use quote::quote;
+    use syn::{DeriveInput, parse2};
+
+    use super::Table;
+
+    #[test]
+    fn accepts_multiple_resolvers() {
+        let input: DeriveInput = parse2(quote! {
+            #[table(
+                name = "example",
+                resolver(name = first, method = resolve_first, ty = "String"),
+                resolver(name = second, method = resolve_second, ty = "i32")
+            )]
+            struct Example {
+                value: String,
+            }
+        })
+        .unwrap();
+
+        let table = Table::from_derive_input(&input).unwrap();
+        let names = table
+            .resolvers()
+            .map(|resolver| resolver.name().to_string())
+            .collect::<Vec<_>>();
+
+        assert_eq!(names, ["first", "second"]);
     }
 }
