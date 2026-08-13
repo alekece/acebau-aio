@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
+	import { tick } from 'svelte';
 	import Cpu from '@lucide/svelte/icons/cpu';
 	import Check from '@lucide/svelte/icons/check';
 	import Copy from '@lucide/svelte/icons/copy';
@@ -85,6 +86,8 @@
 		id: string;
 		busy: boolean;
 		error: string;
+		validationAttempt: number;
+		animateRemoval: boolean;
 	};
 
 	let { data }: PageProps = $props();
@@ -315,7 +318,9 @@
 				id: crypto.randomUUID(),
 				modelId: models[0]?.id ?? '',
 				busy: false,
-				error: ''
+				error: '',
+				validationAttempt: 0,
+				animateRemoval: true
 			},
 			...machineDrafts
 		];
@@ -334,6 +339,7 @@
 	async function saveMachineDraft(id: string) {
 		const draft = machineDrafts.find((candidate) => candidate.id === id);
 		if (!draft || draft.busy) return;
+		updateMachineDraft(id, { validationAttempt: draft.validationAttempt + 1 });
 		if (!draft.modelId || !draft.surname.trim() || !draft.purchaseCost.trim()) {
 			updateMachineDraft(id, { error: 'Renseignez le modèle, le surnom et le prix d’achat.' });
 			return;
@@ -364,6 +370,8 @@
 				}
 			);
 
+			updateMachineDraft(id, { animateRemoval: false });
+			await tick();
 			cancelMachineDraft(id);
 			machines = [result.createMachine, ...machines].slice(0, machinePage.pageSize);
 			pinnedMachineIds = [result.createMachine.id, ...pinnedMachineIds];
@@ -851,7 +859,7 @@
 				>
 				<tbody>
 					{#each machineDrafts as draft (draft.id)}
-						<TableDraftRow>
+						<TableDraftRow animateRemoval={draft.animateRemoval}>
 							<td data-label="" class="mobile-card-hidden">
 								<Badge small tonal tertiary>Nouveau</Badge>
 							</td>
@@ -862,6 +870,7 @@
 											required
 											requiredFeedback={RequiredFeedback.None}
 											invalid={Boolean(draft.error && !draft.surname.trim())}
+											validationAttempt={draft.validationAttempt}
 											bind:value={draft.surname}
 											placeholder="Ex. K2 du fond"
 											aria-label="Surnom de la nouvelle machine"
@@ -877,6 +886,7 @@
 										required
 										requiredFeedback={RequiredFeedback.None}
 										invalid={Boolean(draft.error && !draft.modelId)}
+										validationAttempt={draft.validationAttempt}
 										bind:value={draft.modelId}
 										aria-label="Modèle de la nouvelle machine"
 										disabled={draft.busy}
@@ -895,6 +905,7 @@
 										required
 										requiredFeedback={RequiredFeedback.None}
 										invalid={Boolean(draft.error && !draft.purchaseCost.trim())}
+										validationAttempt={draft.validationAttempt}
 										bind:value={draft.purchaseCost}
 										placeholder="0,00"
 										inputmode="decimal"

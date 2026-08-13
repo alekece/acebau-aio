@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Decimal from 'decimal.js';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { invalidShake } from '$lib/components/ui/animations';
 	import { RequiredFeedback } from '$lib/components/ui/presets';
 
 	import type { MetricUnit } from './MetricInput.svelte';
@@ -31,6 +32,7 @@
 
 	let inputElement: HTMLInputElement;
 	let touched = $state(false);
+	let validationAttempt = $state(0);
 	let validationMessage = $derived.by(() => {
 		const trimmed = value.trim();
 		if (!trimmed) return required ? 'Saisissez une valeur.' : '';
@@ -69,6 +71,10 @@
 		{/if}
 	</span>
 	<div
+		use:invalidShake={{
+			invalid: Boolean(touched && validationMessage),
+			attempt: validationAttempt
+		}}
 		class={`flex overflow-hidden rounded-base border bg-surface-50-950 shadow-sm focus-within:ring-2 ${touched && validationMessage ? 'border-error-500 ring-2 ring-error-500 focus-within:border-error-500 focus-within:ring-error-500/30' : 'border-surface-300-700 focus-within:border-tertiary-500 focus-within:ring-tertiary-500/20'}`}
 	>
 		<input
@@ -83,7 +89,10 @@
 				value = event.currentTarget.value;
 			}}
 			onfocus={() => (touched = false)}
-			onblur={() => (touched = true)}
+			onblur={() => {
+				touched = true;
+				validationAttempt += 1;
+			}}
 		/>
 		<div
 			class="flex shrink-0 items-center gap-1 border-l border-surface-300-700 bg-surface-100-900 px-1.5 text-surface-950-50"

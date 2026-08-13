@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { invalidShake } from '$lib/components/ui/animations';
 	import { RequiredFeedback } from '$lib/components/ui/presets';
 
 	type InputElement = 'input' | 'select';
@@ -12,6 +13,7 @@
 		children,
 		requiredFeedback = RequiredFeedback.Full,
 		invalid = false,
+		validationAttempt = 0,
 		...rest
 	}: {
 		as?: InputElement;
@@ -20,9 +22,9 @@
 		children?: Snippet;
 		requiredFeedback?: RequiredFeedback;
 		invalid?: boolean;
+		validationAttempt?: number;
 		[key: string]: unknown;
 	} = $props();
-
 	function updateValue(event: Event) {
 		value = (event.currentTarget as HTMLInputElement | HTMLSelectElement).value;
 	}
@@ -39,6 +41,7 @@
 		>
 	{/if}
 	<select
+		use:invalidShake={{ invalid, attempt: validationAttempt }}
 		class={classes}
 		{value}
 		aria-invalid={invalid ? 'true' : undefined}
@@ -55,6 +58,7 @@
 		>
 	{/if}
 	<input
+		use:invalidShake={{ invalid, attempt: validationAttempt }}
 		class={classes}
 		{value}
 		aria-invalid={invalid ? 'true' : undefined}

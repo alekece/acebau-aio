@@ -2,6 +2,7 @@
 	import { getMetricDefaults, type MetricKind } from '$lib/settings/metric-defaults';
 	import Decimal from 'decimal.js';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { invalidShake } from '$lib/components/ui/animations';
 	import { RequiredFeedback } from '$lib/components/ui/presets';
 
 	export type MetricUnit = { value: string; label: string };
@@ -35,6 +36,7 @@
 	const metricDefaults = getMetricDefaults();
 	let inputElement: HTMLInputElement;
 	let touched = $state(false);
+	let validationAttempt = $state(0);
 
 	let validationMessage = $derived.by(() => validateDecimal(value, required, min));
 
@@ -84,6 +86,10 @@
 		{/if}
 	</span>
 	<div
+		use:invalidShake={{
+			invalid: Boolean(touched && validationMessage),
+			attempt: validationAttempt
+		}}
 		class={`grid grid-cols-[minmax(0,1fr)_auto] rounded-base shadow-sm focus-within:ring-2 ${touched && validationMessage ? 'ring-2 ring-error-500 focus-within:ring-error-500/30' : 'focus-within:ring-tertiary-500/20'}`}
 	>
 		<input
@@ -96,7 +102,10 @@
 			{value}
 			oninput={updateValue}
 			onfocus={() => (touched = false)}
-			onblur={() => (touched = true)}
+			onblur={() => {
+				touched = true;
+				validationAttempt += 1;
+			}}
 		/>
 		{#if units.length === 1}
 			<span
