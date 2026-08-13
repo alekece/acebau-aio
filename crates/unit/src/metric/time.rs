@@ -4,6 +4,8 @@ use crate::Unit;
 pub enum TimeUnit {
     #[unit(symbol = "y", factor = 525_600)]
     Year,
+    #[unit(symbol = "mo", factor = 43_800)]
+    Month,
     #[unit(symbol = "d", factor = 1440)]
     Day,
     #[unit(symbol = "h", factor = 60)]

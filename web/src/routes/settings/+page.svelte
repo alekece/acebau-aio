@@ -137,7 +137,7 @@
 					>Durée<Input as="select" bind:value={settings.defaultTimeUnit}
 						><option value="min">minute</option><option value="h">heure</option><option value="d"
 							>jour</option
-						><option value="y">année</option></Input
+						><option value="mo">mois</option><option value="y">année</option></Input
 					></label
 				>
 				<label class="label"

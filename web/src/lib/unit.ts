@@ -7,7 +7,7 @@ export type MassUnit = 'g' | 'kg';
 export type PercentageUnit = '%';
 export type PowerUnit = 'W' | 'kW';
 export type PriceUnit = '€';
-export type TimeUnit = 'min' | 'h' | 'd' | 'y';
+export type TimeUnit = 'min' | 'h' | 'd' | 'mo' | 'y';
 
 export type Unit = LengthUnit | MassUnit | PercentageUnit | PowerUnit | PriceUnit | TimeUnit;
 
@@ -38,6 +38,7 @@ const unitDefinitions: Record<Unit, { dimension: Dimension; factor: Decimal }> =
 	min: { dimension: 'time', factor: new UnitDecimal(1) },
 	h: { dimension: 'time', factor: new UnitDecimal(60) },
 	d: { dimension: 'time', factor: new UnitDecimal(1440) },
+	mo: { dimension: 'time', factor: new UnitDecimal(43800) },
 	y: { dimension: 'time', factor: new UnitDecimal(525600) }
 };
 

@@ -75,7 +75,7 @@
 <label class="label">
 	<span>{label}</span>
 	<div
-		class="grid grid-cols-[minmax(0,1fr)_minmax(6.5rem,auto)] rounded-base shadow-sm focus-within:ring-2 focus-within:ring-tertiary-500/20"
+		class="grid grid-cols-[minmax(0,1fr)_auto] rounded-base shadow-sm focus-within:ring-2 focus-within:ring-tertiary-500/20"
 	>
 		<input
 			bind:this={inputElement}
@@ -88,15 +88,23 @@
 			oninput={updateValue}
 			onblur={() => (touched = true)}
 		/>
-		<select
-			class="select min-h-[42px] !rounded-l-none border !border-l-0 border-surface-300-700 bg-surface-100-900 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:border-tertiary-500 focus:ring-0"
-			aria-label={`Unité pour ${label}`}
-			value={resolvedUnit}
-			onchange={updateUnit}
-		>
-			{#each units as option (option.value)}<option value={option.value}>{option.label}</option
+		{#if units.length === 1}
+			<span
+				class="grid min-h-[42px] min-w-12 place-items-center !rounded-l-none rounded-r-base border !border-l-0 border-surface-300-700 bg-surface-100-900 px-2.5 py-2 font-medium text-surface-950-50"
+				aria-label={`Unité pour ${label}`}>{units[0].label}</span
+			>
+		{:else}
+			<select
+				class="select min-h-[42px] min-w-20 !rounded-l-none border !border-l-0 border-surface-300-700 bg-surface-100-900 py-2 pr-8 pl-2.5 font-medium text-surface-950-50 shadow-none focus:z-10 focus:border-tertiary-500 focus:ring-0"
+				aria-label={`Unité pour ${label}`}
+				value={resolvedUnit}
+				onchange={updateUnit}
+			>
+				{#each units as option (option.value)}<option value={option.value}
+					>{option.label}</option
 				>{/each}
-		</select>
+			</select>
+		{/if}
 	</div>
 	{#if touched && validationMessage}
 		<small class="text-xs font-normal text-error-700-300" role="alert"

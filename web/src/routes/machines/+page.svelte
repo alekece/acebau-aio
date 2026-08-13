@@ -22,6 +22,7 @@
 	import Table from '$lib/components/ui/Table.svelte';
 	import TableSection from '$lib/components/ui/TableSection.svelte';
 	import MetricInput from '$lib/components/forms/MetricInput.svelte';
+	import RatioInput from '$lib/components/forms/RatioInput.svelte';
 	import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
 	import type { PageProps } from './$types';
 
@@ -105,14 +106,17 @@
 		{ value: 'min', label: 'minute' },
 		{ value: 'h', label: 'heure' },
 		{ value: 'd', label: 'jour' },
+		{ value: 'mo', label: 'mois' },
 		{ value: 'y', label: 'année' }
 	];
 	const maintenanceCostUnits = [
 		{ value: 'min', label: 'minute' },
 		{ value: 'h', label: 'heure' },
 		{ value: 'd', label: 'jour' },
+		{ value: 'mo', label: 'mois' },
 		{ value: 'y', label: 'année' }
 	];
+	const priceUnits = [{ value: '€', label: '€' }];
 	const powerUnits = [
 		{ value: 'W', label: 'W' },
 		{ value: 'kW', label: 'kW' }
@@ -475,16 +479,21 @@
 							<label class="label"
 								>Nom<Input required bind:value={modelForm.name} placeholder="Ex. MK4" /></label
 							>
-							<label class="label"
-								>Prix d’achat<Input required bind:value={modelForm.purchaseCost} /></label
-							>
 							<MetricInput
+								label="Prix d’achat"
+								required
+								bind:value={modelForm.purchaseCost}
+								unit="€"
+								units={priceUnits}
+							/>
+							<RatioInput
 								label="Coût de maintenance"
 								required
-								defaultUnit="y"
 								bind:value={modelForm.maintenanceCostValue}
-								bind:unit={modelForm.maintenanceCostUnit}
-								units={maintenanceCostUnits}
+								numeratorUnit="€"
+								bind:denominatorUnit={modelForm.maintenanceCostUnit}
+								numeratorUnits={priceUnits}
+								denominatorUnits={maintenanceCostUnits}
 							/>
 							<MetricInput
 								label="Durée de vie"
@@ -788,15 +797,20 @@
 					<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
 						<label class="label">Marque<Input required bind:value={modelForm.brand} /></label><label
 							class="label">Nom<Input required bind:value={modelForm.name} /></label
-						><label class="label"
-							>Prix d’achat<Input required bind:value={modelForm.purchaseCost} /></label
 						><MetricInput
+							label="Prix d’achat"
+							required
+							bind:value={modelForm.purchaseCost}
+							unit="€"
+							units={priceUnits}
+						/><RatioInput
 							label="Coût de maintenance"
 							required
-							defaultUnit="y"
 							bind:value={modelForm.maintenanceCostValue}
-							bind:unit={modelForm.maintenanceCostUnit}
-							units={maintenanceCostUnits}
+							numeratorUnit="€"
+							bind:denominatorUnit={modelForm.maintenanceCostUnit}
+							numeratorUnits={priceUnits}
+							denominatorUnits={maintenanceCostUnits}
 						/><MetricInput
 							label="Durée de vie"
 							required

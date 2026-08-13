@@ -18,6 +18,10 @@ describe('unit DTO conversions', () => {
 
 		expect(time.convertTo('h').toDTO()).toEqual({ value: '1', unit: 'h' });
 		expect(mass.convertTo('g').toDTO()).toEqual({ value: '1000', unit: 'g' });
+		expect(Metric.from({ value: '12', unit: 'mo' as const }).convertTo('y').toDTO()).toEqual({
+			value: '1',
+			unit: 'y'
+		});
 	});
 
 	it('preserves ratio unit types and decimal values', () => {
