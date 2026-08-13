@@ -18,13 +18,8 @@
 		maintenance: Tone.Warning,
 		broken: Tone.Error
 	};
-
-	let tone = $derived(tones[state]);
 </script>
 
-<Badge variant="tonal" {tone} class="[--badge-size:var(--text-sm)]">
-	{#snippet icon()}
-		<span class="size-2 rounded-full bg-current" aria-hidden="true"></span>
-	{/snippet}
+<Badge variant="tonal" tone={tones[state]} class="[--badge-size:var(--text-sm)]">
 	{labels[state]}
 </Badge>

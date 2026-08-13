@@ -15,6 +15,7 @@
 	import Input from '$lib/components/ui/forms/Input.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import MachineStatus from '$lib/components/machines/MachineStatus.svelte';
+	import SelectableBadge from '$lib/components/ui/SelectableBadge.svelte';
 	import Kpi from '$lib/components/ui/Kpi.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
 	import OnboardingPanel from '$lib/components/ui/OnboardingPanel.svelte';
@@ -25,6 +26,15 @@
 	import RatioInput from '$lib/components/ui/forms/RatioInput.svelte';
 	import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
 	import type { PageProps } from './$types';
+
+	type MachineState = 'available' | 'running' | 'maintenance' | 'broken';
+
+	const machineStateOptions = [
+		{ value: 'available', label: 'Disponible', tone: 'success' },
+		{ value: 'running', label: 'En production', tone: 'secondary' },
+		{ value: 'maintenance', label: 'Maintenance', tone: 'warning' },
+		{ value: 'broken', label: 'En panne', tone: 'error' }
+	] satisfies ReadonlyArray<{ value: MachineState; label: string; tone: string }>;
 
 	type MachineModel = {
 		id: string;
@@ -41,7 +51,7 @@
 		surname: string;
 		modelId: string;
 		printingTime: MetricDTO<TimeUnit>;
-		state: 'available' | 'running' | 'maintenance' | 'broken';
+		state: MachineState;
 		model: MachineModel;
 	};
 
@@ -302,10 +312,9 @@
 		saving = true;
 		error = '';
 		try {
-			await gql(
-				`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`,
-				{ input: { ...machineForm, printingTime: { value: '0', unit: 'h' } } }
-			);
+			await gql(`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`, {
+				input: { ...machineForm, printingTime: { value: '0', unit: 'h' } }
+			});
 			closeModal();
 			await invalidateAll();
 		} catch (cause) {
@@ -403,6 +412,25 @@
 					error: cause instanceof Error ? cause.message : 'Impossible de modifier la machine.'
 				}
 			};
+		}
+	}
+
+	async function updateMachineState(machine: Machine, state: MachineState) {
+		const previousState = machine.state;
+		error = '';
+		machines = machines.map((item) => (item.id === machine.id ? { ...item, state } : item));
+
+		try {
+			await gql(
+				`mutation($id: String!, $input: MachineChangeset!) { patchMachine(id: $id, input: $input) { id } }`,
+				{ id: machine.id, input: { state } }
+			);
+			await invalidateAll();
+		} catch (cause) {
+			machines = machines.map((item) =>
+				item.id === machine.id ? { ...item, state: previousState } : item
+			);
+			error = `L’état de la machine ne peut pas être modifié. ${cause instanceof Error ? cause.message : ''}`;
 		}
 	}
 </script>
@@ -691,7 +719,13 @@
 										><option value="maintenance">Maintenance</option><option value="broken"
 											>En panne</option
 										></Input
-									>{:else}<MachineStatus state={machine.state} />{/if}</td
+									>{:else}<SelectableBadge
+										value={machine.state}
+										options={machineStateOptions}
+										size="sm"
+										ariaLabel={`Modifier l’état : ${machineStateLabel(machine.state)}`}
+										onChange={(state) => updateMachineState(machine, state)}
+									/>{/if}</td
 							>
 							<td data-label="Charge">{hardcodedWorkload}</td>
 							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
@@ -766,7 +800,9 @@
 								<strong class="block text-sm text-surface-900-100"
 									>{model.brand} · {model.name}</strong
 								><small class="text-surface-700-300"
-									>{metricLabel(model.averagePower)} · durée de vie {metricLabel(model.lifetime)}{#if machineCount > 0}
+									>{metricLabel(model.averagePower)} · durée de vie {metricLabel(
+										model.lifetime
+									)}{#if machineCount > 0}
 										· {machineCount} machine{machineCount > 1 ? 's' : ''}{/if}</small
 								>
 							</div>
@@ -960,17 +996,23 @@
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Puissance moyenne</span><strong
-							>{selectedMachine.model ? metricLabel(selectedMachine.model.averagePower) : '—'}</strong
+							>{selectedMachine.model
+								? metricLabel(selectedMachine.model.averagePower)
+								: '—'}</strong
 						>
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Prix d’achat</span><strong
-							>{selectedMachine.model ? metricLabel(selectedMachine.model.purchaseCost) : '—'}</strong
+							>{selectedMachine.model
+								? metricLabel(selectedMachine.model.purchaseCost)
+								: '—'}</strong
 						>
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Maintenance</span><strong
-							>{selectedMachine.model ? ratioLabel(selectedMachine.model.maintenanceCost) : '—'}</strong
+							>{selectedMachine.model
+								? ratioLabel(selectedMachine.model.maintenanceCost)
+								: '—'}</strong
 						>
 					</div>
 					<div>
