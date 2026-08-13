@@ -169,7 +169,7 @@ impl RepositoryImpl<'_> {
                 }
 
                 query_builder
-                    .push(" ORDER BY created_at ASC LIMIT ")
+                    .push(" ORDER BY created_at DESC LIMIT ")
                     .push_bind(i64::from(options.limit()))
                     .push(" OFFSET ")
                     .push_bind(i64::from(options.offset()));

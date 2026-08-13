@@ -72,6 +72,11 @@ export enum Size {
 	Large = 'lg'
 }
 
+export enum RequiredFeedback {
+	None = 'none',
+	Full = 'full'
+}
+
 export const sizeGroup: ExclusiveGroup<Size> = {
 	fallback: Size.Medium,
 	candidates: [

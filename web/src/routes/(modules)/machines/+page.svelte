@@ -9,6 +9,7 @@
 	import Trash2 from '@lucide/svelte/icons/trash-2';
 	import X from '@lucide/svelte/icons/x';
 	import Button from '$lib/components/ui/Button.svelte';
+	import Badge from '$lib/components/ui/Badge.svelte';
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import IconAction from '$lib/components/ui/IconAction.svelte';
@@ -21,9 +22,11 @@
 	import OnboardingPanel from '$lib/components/ui/OnboardingPanel.svelte';
 	import PageShell from '$lib/components/ui/PageShell.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
+	import TableDraftRow from '$lib/components/ui/TableDraftRow.svelte';
 	import TableSection from '$lib/components/ui/TableSection.svelte';
 	import MetricInput from '$lib/components/ui/forms/MetricInput.svelte';
 	import RatioInput from '$lib/components/ui/forms/RatioInput.svelte';
+	import { RequiredFeedback } from '$lib/components/ui/presets';
 	import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
 	import type { PageProps } from './$types';
 
@@ -78,6 +81,11 @@
 		surname: string;
 		purchaseCost: string;
 	};
+	type MachineDraft = MachineForm & {
+		id: string;
+		busy: boolean;
+		error: string;
+	};
 
 	let { data }: PageProps = $props();
 	let models = $state<MachineModel[]>([]);
@@ -115,6 +123,11 @@
 			}
 		>
 	>({});
+	let machineDrafts = $state<MachineDraft[]>([]);
+	let pinnedMachineIds = $state<string[]>([]);
+	let hasUnsavedTableRows = $derived(
+		machineDrafts.length > 0 || Object.keys(machineEdits).length > 0
+	);
 
 	$effect(() => {
 		models = data.models;
@@ -216,10 +229,18 @@
 
 	async function loadMachinePage(page: number) {
 		if (page < 1 || pageLoading) return;
+		if (
+			hasUnsavedTableRows &&
+			!window.confirm('Des modifications sont en cours. Changer de page entraînera leur perte.')
+		)
+			return;
 
 		pageLoading = true;
 		error = '';
 		try {
+			machineDrafts = [];
+			machineEdits = {};
+			pinnedMachineIds = [];
 			const result = await gql<{ machines: MachinePage }>(
 				`query MachineTablePage($page: Int!, $pageSize: Int!) {
 					machines(page: $page, pageSize: $pageSize) {
@@ -285,6 +306,79 @@
 	function openMachineForm() {
 		machineForm = { ...emptyMachine(), modelId: models[0]?.id ?? '' };
 		activeModal = 'new-machine';
+	}
+
+	function addMachineDraft() {
+		machineDrafts = [
+			{
+				...emptyMachine(),
+				id: crypto.randomUUID(),
+				modelId: models[0]?.id ?? '',
+				busy: false,
+				error: ''
+			},
+			...machineDrafts
+		];
+	}
+
+	function cancelMachineDraft(id: string) {
+		machineDrafts = machineDrafts.filter((draft) => draft.id !== id);
+	}
+
+	function updateMachineDraft(id: string, changes: Partial<MachineDraft>) {
+		machineDrafts = machineDrafts.map((draft) =>
+			draft.id === id ? { ...draft, ...changes } : draft
+		);
+	}
+
+	async function saveMachineDraft(id: string) {
+		const draft = machineDrafts.find((candidate) => candidate.id === id);
+		if (!draft || draft.busy) return;
+		if (!draft.modelId || !draft.surname.trim() || !draft.purchaseCost.trim()) {
+			updateMachineDraft(id, { error: 'Renseignez le modèle, le surnom et le prix d’achat.' });
+			return;
+		}
+
+		updateMachineDraft(id, { busy: true, error: '' });
+		try {
+			const result = await gql<{ createMachine: Machine }>(
+				`mutation($input: MachineInput!) {
+					createMachine(input: $input) {
+						id surname modelId purchaseCost { value unit } printingTime { value unit } state
+						model {
+							id brand name
+							maintenanceCost { value numeratorUnit denominatorUnit }
+							lifetime { value unit }
+							averagePower { value unit }
+						}
+					}
+				}`,
+				{
+					input: {
+						modelId: draft.modelId,
+						surname: draft.surname.trim(),
+						purchaseCost: { value: draft.purchaseCost, unit: '€' },
+						printingTime: { value: '0', unit: 'h' },
+						state: 'available'
+					}
+				}
+			);
+
+			cancelMachineDraft(id);
+			machines = [result.createMachine, ...machines].slice(0, machinePage.pageSize);
+			pinnedMachineIds = [result.createMachine.id, ...pinnedMachineIds];
+			const totalItems = machinePage.totalItems + 1;
+			machinePage = {
+				...machinePage,
+				totalItems,
+				totalPages: Math.ceil(totalItems / machinePage.pageSize)
+			};
+		} catch (cause) {
+			updateMachineDraft(id, {
+				busy: false,
+				error: cause instanceof Error ? cause.message : 'Impossible de créer la machine.'
+			});
+		}
 	}
 
 	function openMachineDetails(machine: Machine) {
@@ -496,21 +590,17 @@
 	}
 </script>
 
+<svelte:window
+	onbeforeunload={(event) => {
+		if (!hasUnsavedTableRows) return;
+		event.preventDefault();
+	}}
+/>
+
 <svelte:head><title>Machines — Acebau</title></svelte:head>
 
 <PageShell>
-	<ModuleHeader title="Machines">
-		{#snippet actions()}
-			{#if models.length > 0 && machines.length > 0}
-				<Button variant="outlined" tone="secondary" onclick={openModelManager}>
-					<Plus size={17} />Nouveau modèle
-				</Button>
-				<Button tone="tertiary" onclick={openMachineForm} disabled={models.length === 0}>
-					<Plus size={17} />Nouvelle machine
-				</Button>
-			{/if}
-		{/snippet}
-	</ModuleHeader>
+	<ModuleHeader title="Machines" />
 	<DataSourceNotice visible={data.usingFallback} message={data.loadError} />
 
 	{#if error}<p class="mb-5 rounded-base preset-tonal-error p-3" role="alert">{error}</p>{/if}
@@ -572,7 +662,7 @@
 								<RatioInput
 									label="Coût de maintenance"
 									required
-									requiredFeedback
+									requiredFeedback={RequiredFeedback.Full}
 									bind:value={modelForm.maintenanceCostValue}
 									numeratorUnit="€"
 									bind:denominatorUnit={modelForm.maintenanceCostUnit}
@@ -584,7 +674,7 @@
 								<MetricInput
 									label="Durée de vie"
 									required
-									requiredFeedback
+									requiredFeedback={RequiredFeedback.Full}
 									kind="time"
 									bind:value={modelForm.lifetimeValue}
 									bind:unit={modelForm.lifetimeUnit}
@@ -595,7 +685,7 @@
 								<MetricInput
 									label="Puissance moyenne"
 									required
-									requiredFeedback
+									requiredFeedback={RequiredFeedback.Full}
 									kind="power"
 									bind:value={modelForm.averagePowerValue}
 									bind:unit={modelForm.averagePowerUnit}
@@ -633,7 +723,7 @@
 							><MetricInput
 								label="Prix d’achat réel"
 								required
-								requiredFeedback
+								requiredFeedback={RequiredFeedback.Full}
 								bind:value={machineForm.purchaseCost}
 								unit="€"
 								units={priceUnits}
@@ -727,6 +817,9 @@
 					onclick={openModelManager}
 					><Cpu size={16} />{models.length} modèle{models.length > 1 ? 's' : ''}</button
 				>
+				<Button tone="tertiary" size="sm" onclick={addMachineDraft} disabled={models.length === 0}>
+					<Plus size={16} />Nouvelle machine
+				</Button>
 			{/snippet}
 			<Table
 				responsiveCards
@@ -740,7 +833,7 @@
 				class="min-w-[62rem] table-fixed"
 			>
 				<colgroup>
-					<col class="w-10" />
+					<col class="w-24" />
 					<col class="w-42" />
 					<col class="w-40" />
 					<col class="w-38" />
@@ -757,9 +850,80 @@
 					></thead
 				>
 				<tbody>
+					{#each machineDrafts as draft (draft.id)}
+						<TableDraftRow>
+							<td data-label="" class="mobile-card-hidden">
+								<Badge small tonal tertiary>Nouveau</Badge>
+							</td>
+							<td data-label="Machine">
+								<div class="grid gap-2">
+									<div class="flex items-center">
+										<Input
+											required
+											requiredFeedback={RequiredFeedback.None}
+											invalid={Boolean(draft.error && !draft.surname.trim())}
+											bind:value={draft.surname}
+											placeholder="Ex. K2 du fond"
+											aria-label="Surnom de la nouvelle machine"
+											disabled={draft.busy}
+										/>
+									</div>
+								</div>
+							</td>
+							<td data-label="Modèle">
+								<div class="flex items-center">
+									<Input
+										as="select"
+										required
+										requiredFeedback={RequiredFeedback.None}
+										invalid={Boolean(draft.error && !draft.modelId)}
+										bind:value={draft.modelId}
+										aria-label="Modèle de la nouvelle machine"
+										disabled={draft.busy}
+									>
+										{#each models as model (model.id)}
+											<option value={model.id}>{model.brand} · {model.name}</option>
+										{/each}
+									</Input>
+								</div>
+							</td>
+							<td data-label="État"><MachineStatus state="available" /></td>
+							<td data-label="Temps d’impression">0h</td>
+							<td data-label="Prix d’achat">
+								<div class="flex min-w-28 items-center gap-1.5">
+									<Input
+										required
+										requiredFeedback={RequiredFeedback.None}
+										invalid={Boolean(draft.error && !draft.purchaseCost.trim())}
+										bind:value={draft.purchaseCost}
+										placeholder="0,00"
+										inputmode="decimal"
+										aria-label="Prix d’achat de la nouvelle machine"
+										disabled={draft.busy}
+									/><span class="font-medium">€</span>
+								</div>
+							</td>
+							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
+							<td data-label="" class="mobile-card-actions">
+								<IconAction
+									label="Créer la machine"
+									tone="success"
+									disabled={draft.busy}
+									onclick={() => saveMachineDraft(draft.id)}><Check size={18} /></IconAction
+								>
+								<IconAction
+									label="Annuler la création"
+									tone="error"
+									disabled={draft.busy}
+									onclick={() => cancelMachineDraft(draft.id)}><X size={18} /></IconAction
+								>
+							</td>
+						</TableDraftRow>
+					{/each}
 					{#each machines as machine, index (machine.id)}
 						<tr
 							class="cursor-pointer transition hover:bg-surface-100-900"
+							class:bg-tertiary-50-950={pinnedMachineIds.includes(machine.id)}
 							onclick={() => openMachineDetails(machine)}
 							onkeydown={(event) => event.key === 'Enter' && openMachineDetails(machine)}
 							tabindex="0"
@@ -928,7 +1092,7 @@
 							<RatioInput
 								label="Coût de maintenance"
 								required
-								requiredFeedback
+								requiredFeedback={RequiredFeedback.Full}
 								bind:value={modelForm.maintenanceCostValue}
 								numeratorUnit="€"
 								bind:denominatorUnit={modelForm.maintenanceCostUnit}
@@ -940,7 +1104,7 @@
 							<MetricInput
 								label="Durée de vie"
 								required
-								requiredFeedback
+								requiredFeedback={RequiredFeedback.Full}
 								kind="time"
 								bind:value={modelForm.lifetimeValue}
 								bind:unit={modelForm.lifetimeUnit}
@@ -951,7 +1115,7 @@
 							<MetricInput
 								label="Puissance moyenne"
 								required
-								requiredFeedback
+								requiredFeedback={RequiredFeedback.Full}
 								kind="power"
 								bind:value={modelForm.averagePowerValue}
 								bind:unit={modelForm.averagePowerUnit}
@@ -1016,7 +1180,7 @@
 						><MetricInput
 							label="Prix d’achat réel"
 							required
-							requiredFeedback
+							requiredFeedback={RequiredFeedback.Full}
 							bind:value={machineForm.purchaseCost}
 							unit="€"
 							units={priceUnits}

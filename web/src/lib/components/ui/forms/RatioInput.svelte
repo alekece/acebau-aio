@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Decimal from 'decimal.js';
 	import Badge from '$lib/components/ui/Badge.svelte';
+	import { RequiredFeedback } from '$lib/components/ui/presets';
 
 	import type { MetricUnit } from './MetricInput.svelte';
 
@@ -14,7 +15,7 @@
 		hint = '',
 		min = '0',
 		required = false,
-		requiredFeedback = false
+		requiredFeedback = RequiredFeedback.None
 	}: {
 		label: string;
 		value?: string;
@@ -25,7 +26,7 @@
 		hint?: string;
 		min?: string | number;
 		required?: boolean;
-		requiredFeedback?: boolean;
+		requiredFeedback?: RequiredFeedback;
 	} = $props();
 
 	let inputElement: HTMLInputElement;
@@ -63,7 +64,7 @@
 <label class="label">
 	<span class="flex items-center justify-between gap-2">
 		<span>{label}</span>
-		{#if required && requiredFeedback}
+		{#if required && requiredFeedback === RequiredFeedback.Full}
 			<Badge small tonal surface class="!bg-surface-500/10">Requis</Badge>
 		{/if}
 	</span>
