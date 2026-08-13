@@ -54,15 +54,12 @@ dependencies = [
  "axum",
  "clap-config-fallback",
  "reqwest",
- "serde",
  "serde_json",
- "snafu",
  "sqlx",
  "tokio",
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "url",
  "uuid",
 ]
 

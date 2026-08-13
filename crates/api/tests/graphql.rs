@@ -1,12 +1,9 @@
-use acebau_api::{AppState, Client, router};
+use acebau_api::{AppState, router};
 use acebau_database::Database;
-use acebau_machine::{MachineModelChangeset, MachineModelInput};
-use acebau_unit::{Power, Price, Time};
 use axum::serve;
 use serde_json::{Value, json};
 use sqlx::PgPool;
 use tokio::net::TcpListener;
-use url::Url;
 
 #[sqlx::test]
 #[ignore = "requires the Docker Compose PostgreSQL service"]
@@ -19,70 +16,93 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
     let server = tokio::spawn(async move {
         serve(listener, app).await.expect("test server should run");
     });
-    let client = Client::new(Url::parse(&format!("http://{address}/")).expect("test server URL should parse"));
+    let endpoint = format!("http://{address}/");
+    let http = reqwest::Client::new();
     let prefix = format!("graphql-test-{}", std::process::id());
-    let input = |name: &str| MachineModelInput {
-        brand: prefix.clone(),
-        name: name.to_owned(),
-        purchase_cost: Price::new(100.0),
-        maintenance_cost: Price::new(5.0) / Time::from_hours(1.0),
-        lifetime: Time::from_hours(10.0),
-        average_power: Power::from_watts(100.0),
-    };
+    let first = create_machine_model(&http, &endpoint, &prefix, "one").await;
+    let second = create_machine_model(&http, &endpoint, &prefix, "two").await;
+    let third = create_machine_model(&http, &endpoint, &prefix, "three").await;
+    assert_eq!(first["name"], "one");
+    assert_eq!(third["name"], "three");
 
-    let first = client
-        .create_machine_model(input("one"))
-        .await
-        .expect("model should be created");
-    let second = client
-        .create_machine_model(input("two"))
-        .await
-        .expect("model should be created");
-    let third = client
-        .create_machine_model(input("three"))
-        .await
-        .expect("model should be created");
-    assert_eq!(first.name, "one");
-    assert_eq!(third.name, "three");
+    let fetched = graphql(
+        &http,
+        &endpoint,
+        "query($id: String!) { machineModel(id: $id) { id name } }",
+        json!({ "id": second["id"] }),
+    )
+    .await;
+    assert_eq!(fetched["machineModel"]["id"], second["id"]);
+    assert_eq!(fetched["machineModel"]["name"], second["name"]);
 
-    let fetched = client
-        .get_machine_model(&second.id)
-        .await
-        .expect("model should be readable");
-    assert_eq!(fetched.id, second.id);
-    assert_eq!(fetched.name, second.name);
+    let updated = graphql(
+        &http,
+        &endpoint,
+        r#"mutation($id: String!, $input: MachineModelInput!) {
+            updateMachineModel(id: $id, input: $input) { id name }
+        }"#,
+        json!({ "id": second["id"], "input": machine_model_input(&prefix, "updated") }),
+    )
+    .await;
+    assert_eq!(updated["updateMachineModel"]["name"], "updated");
 
-    let updated = client
-        .update_machine_model(&second.id, input("updated"))
-        .await
-        .expect("model should be updated");
-    assert_eq!(updated.name, "updated");
+    let patched = graphql(
+        &http,
+        &endpoint,
+        r#"mutation($id: String!, $input: MachineModelChangeset!) {
+            patchMachineModel(id: $id, input: $input) { id name }
+        }"#,
+        json!({ "id": second["id"], "input": { "name": "patched" } }),
+    )
+    .await;
+    assert_eq!(patched["patchMachineModel"]["name"], "patched");
 
-    let patched = client
-        .patch_machine_model(
-            &second.id,
-            MachineModelChangeset {
-                name: Some("patched".to_owned()),
-                ..Default::default()
-            },
-        )
-        .await
-        .expect("model should be patched");
-    assert_eq!(patched.name, "patched");
+    let deleted = graphql(
+        &http,
+        &endpoint,
+        "mutation($id: String!) { deleteMachineModel(id: $id) }",
+        json!({ "id": third["id"] }),
+    )
+    .await;
+    assert_eq!(deleted["deleteMachineModel"], true);
 
-    assert!(
-        client
-            .delete_machine_model(&third.id)
-            .await
-            .expect("model should be deleted")
-    );
-
-    let models = client.list_machine_models().await.expect("models should be listed");
-    assert!(models.iter().any(|model| model.id == first.id));
-    assert!(models.iter().any(|model| model.name == "patched"));
-    assert!(!models.iter().any(|model| model.id == third.id));
+    let listed = graphql(&http, &endpoint, "query { machineModels { id name } }", json!({})).await;
+    let models = listed["machineModels"]
+        .as_array()
+        .expect("machine models should be a list");
+    assert!(models.iter().any(|model| model["id"] == first["id"]));
+    assert!(models.iter().any(|model| model["name"] == "patched"));
+    assert!(!models.iter().any(|model| model["id"] == third["id"]));
 
     server.abort();
+}
+
+fn machine_model_input(brand: &str, name: &str) -> Value {
+    json!({
+        "brand": brand,
+        "name": name,
+        "purchaseCost": { "value": "100", "unit": "€" },
+        "maintenanceCost": {
+            "value": "5",
+            "numeratorUnit": "€",
+            "denominatorUnit": "h"
+        },
+        "lifetime": { "value": "10", "unit": "h" },
+        "averagePower": { "value": "100", "unit": "W" }
+    })
+}
+
+async fn create_machine_model(http: &reqwest::Client, endpoint: &str, brand: &str, name: &str) -> Value {
+    graphql(
+        http,
+        endpoint,
+        r#"mutation($input: MachineModelInput!) {
+            createMachineModel(input: $input) { id name }
+        }"#,
+        json!({ "input": machine_model_input(brand, name) }),
+    )
+    .await["createMachineModel"]
+        .clone()
 }
 
 #[sqlx::test]
@@ -179,10 +199,14 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
         json!({"input": {
             "brand": "Integration",
             "name": format!("Production model {}", std::process::id()),
-            "purchaseCost": "100",
-            "maintenanceCost": "5/1h",
-            "lifetime": "10h",
-            "averagePower": "100W"
+            "purchaseCost": { "value": "100", "unit": "€" },
+            "maintenanceCost": {
+                "value": "5",
+                "numeratorUnit": "€",
+                "denominatorUnit": "h"
+            },
+            "lifetime": { "value": "10", "unit": "h" },
+            "averagePower": { "value": "100", "unit": "W" }
         }}),
     )
     .await;
@@ -195,7 +219,7 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
         json!({"input": {
             "modelId": machine_model["createMachineModel"]["id"],
             "surname": format!("Production printer {}", std::process::id()),
-            "printingTime": "0h",
+            "printingTime": { "value": "0", "unit": "h" },
             "state": "available"
         }}),
     )

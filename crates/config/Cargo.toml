@@ -7,4 +7,4 @@ edition.workspace = true
 clap = { workspace = true, features = ["env"] }
 clap-config-fallback = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
-url = { workspace = true }
+url = { workspace = true, features = ["serde"] }

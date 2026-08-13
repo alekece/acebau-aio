@@ -1,7 +1,6 @@
 #![allow(clippy::pedantic)]
 #![recursion_limit = "256"]
 
-mod client;
 mod handlers;
 
 use acebau_activity::{ActivityMutation, ActivityQuery, MIGRATOR as ACTIVITY_MIGRATOR};
@@ -35,8 +34,6 @@ use acebau_unit::Time;
 use async_graphql::{Context, EmptySubscription, MergedObject, Object, Schema, SimpleObject};
 use axum::{Router, routing::get};
 use uuid::Uuid;
-
-pub use client::{Client, ClientError};
 
 #[derive(MergedObject, Default)]
 struct QueryRoot(

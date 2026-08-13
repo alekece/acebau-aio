@@ -22,11 +22,6 @@ acebau-reseller = { workspace = true }
 acebau-settings = { workspace = true }
 acebau-unit = { workspace = true, features = ["graphql"] }
 clap-config-fallback = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-reqwest = { workspace = true }
-snafu = { workspace = true }
-url = { workspace = true, features = ["serde"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 axum = { workspace = true }
@@ -38,4 +33,6 @@ uuid = { workspace = true }
 
 [dev-dependencies]
 acebau-unit = { workspace = true }
+reqwest = { workspace = true }
+serde_json = { workspace = true }
 sqlx = { workspace = true, features = ["postgres"] }
