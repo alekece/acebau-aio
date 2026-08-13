@@ -21,6 +21,9 @@ pub struct Second;
 /// `Unit`, a trait indicating that a type can be used as a unit of measurement
 /// and providing a method to get the conversion factor to a canonical unit.
 pub trait Unit: Copy + Default + ToString {
+    /// Stable name used to compose type names for integrations such as GraphQL.
+    const NAME: &'static str;
+
     /// Returns the conversion factor to a canonical unit.
     fn factor(&self) -> Decimal;
 
@@ -49,6 +52,8 @@ impl<T> Default for Unitless<T> {
     }
 }
 impl<T> Unit for Unitless<T> {
+    const NAME: &'static str = "Unitless";
+
     fn factor(&self) -> Decimal {
         Decimal::ONE
     }

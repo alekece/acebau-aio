@@ -17,6 +17,7 @@ impl<'a> UnitImpl<'a> {
 impl ToTokens for UnitImpl<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = self.unit.ident();
+        let name_const = self.unit.metric_ident().to_string();
         let variant_idents = self.variants.iter().map(Variant::ident);
         let factors = self.variants.iter().map(|variant| {
             let (lo, mid, hi, scale) = variant.factor().parts();
@@ -25,6 +26,8 @@ impl ToTokens for UnitImpl<'_> {
 
         tokens.extend(quote! {
             impl ::acebau_unit::unit::Unit for #ident {
+                const NAME: &'static str = #name_const;
+
                 fn factor(&self) -> ::acebau_unit::Decimal {
                     match self {
                         #(Self::#variant_idents => #factors,)*
