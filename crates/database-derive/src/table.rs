@@ -8,9 +8,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident, quote};
 use syn::{Ident, Path, Type};
 
-use crate::generate::{
-    ChangesetStruct, InputStruct, MutationStruct, OutputImpl, QueryStruct, RelationshipFns, RepositoryImpl,
-};
+use crate::generate::{ChangesetStruct, InputStruct, MutationStruct, OutputImpl, QueryStruct, RepositoryImpl};
 
 #[derive(FromField)]
 #[darling(attributes(table), and_then = Self::finalize)]
@@ -159,7 +157,6 @@ impl ToTokens for Table {
         let mutation_struct = MutationStruct::from(self);
         let output_impl = OutputImpl::from(self);
         let query_struct = QueryStruct::from(self);
-        let relationship_impl = RelationshipFns::from(self);
         let repository_impl = RepositoryImpl::from(self);
 
         tokens.extend(quote! {
@@ -168,7 +165,6 @@ impl ToTokens for Table {
             #mutation_struct
             #output_impl
             #query_struct
-            #relationship_impl
             #repository_impl
         });
     }

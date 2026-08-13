@@ -6,7 +6,7 @@ mod handlers;
 use acebau_activity::{ActivityMutation, ActivityQuery, MIGRATOR as ACTIVITY_MIGRATOR};
 use acebau_analytics::AnalyticsQuery;
 use acebau_catalogue::{MIGRATOR as CATALOGUE_MIGRATOR, ProductMutation, ProductQuery, VariantMutation, VariantQuery};
-use acebau_database::{Database, DatabaseError, FetchOptions, MIGRATOR, MigrationOptions, Record, Repository, Status};
+use acebau_database::{Database, DatabaseError, MIGRATOR, MigrationOptions};
 use acebau_files::{FileMetadataMutation, FileMetadataQuery, MIGRATOR as FILES_MIGRATOR};
 use acebau_finance::{ExpenseMutation, ExpenseQuery, MIGRATOR as FINANCE_MIGRATOR};
 use acebau_inventory::{
@@ -14,8 +14,7 @@ use acebau_inventory::{
 };
 use acebau_invoice::{ImportedInvoiceMutation, ImportedInvoiceQuery, MIGRATOR as INVOICE_MIGRATOR};
 use acebau_machine::{
-    MIGRATOR as MACHINE_MIGRATOR, Machine, MachineModel, MachineModelMutation, MachineModelQuery, MachineMutation,
-    MachineState,
+    MIGRATOR as MACHINE_MIGRATOR, MachineModelMutation, MachineModelQuery, MachineMutation, MachineQuery,
 };
 use acebau_order::{
     CustomerOrderMutation, CustomerOrderQuery, MIGRATOR as ORDER_MIGRATOR, OrderLineMutation, OrderLineQuery,
@@ -30,10 +29,8 @@ use acebau_production::{
 use acebau_recipe::{MIGRATOR as RECIPE_MIGRATOR, RecipeItemMutation, RecipeItemQuery};
 use acebau_reseller::{MIGRATOR as RESELLER_MIGRATOR, ResellerMutation, ResellerQuery};
 use acebau_settings::{ApplicationSettingMutation, ApplicationSettingQuery, MIGRATOR as SETTINGS_MIGRATOR};
-use acebau_unit::Time;
-use async_graphql::{Context, EmptySubscription, MergedObject, Object, Schema, SimpleObject};
+use async_graphql::{EmptySubscription, MergedObject, Schema};
 use axum::{Router, routing::get};
-use uuid::Uuid;
 
 #[derive(MergedObject, Default)]
 struct QueryRoot(
@@ -42,7 +39,7 @@ struct QueryRoot(
     PrintedPieceQuery,
     PieceMachineProfileQuery,
     RecipeItemQuery,
-    MachineViewQuery,
+    MachineQuery,
     MachineModelQuery,
     SupplyQuery,
     FilamentSpoolQuery,
@@ -80,57 +77,6 @@ struct MutationRoot(
     FileMetadataMutation,
     ApplicationSettingMutation,
 );
-
-#[derive(Debug, SimpleObject)]
-struct MachineView {
-    id: Uuid,
-    status: Status,
-    model_id: Uuid,
-    surname: String,
-    printing_time: Time,
-    state: MachineState,
-    model: Record<MachineModel>,
-}
-
-#[derive(Default)]
-struct MachineViewQuery;
-
-#[Object]
-impl MachineViewQuery {
-    async fn machines(
-        &self,
-        ctx: &Context<'_>,
-        page: Option<i32>,
-        page_size: Option<i32>,
-    ) -> async_graphql::Result<Vec<MachineView>> {
-        let mut database = ctx.data::<Database>()?.clone();
-        let page = u32::try_from(page.unwrap_or(1)).map_err(|_| "page number must be greater than zero")?;
-        let page_size = u32::try_from(page_size.unwrap_or(10)).map_err(|_| "page size must be positive")?;
-        let machines = database
-            .repository::<Machine>()
-            .fetch_all(FetchOptions::default().with_page(page, page_size)?)
-            .await?;
-        let mut views = Vec::with_capacity(machines.len());
-
-        for machine in machines {
-            let model = database
-                .repository::<MachineModel>()
-                .fetch_by_id(machine.model_id)
-                .await?;
-            views.push(MachineView {
-                id: machine.id,
-                status: machine.status,
-                model_id: machine.model_id,
-                surname: machine.surname.clone(),
-                printing_time: machine.printing_time,
-                state: machine.state,
-                model,
-            });
-        }
-
-        Ok(views)
-    }
-}
 
 type AppSchema = Schema<QueryRoot, MutationRoot, EmptySubscription>;
 

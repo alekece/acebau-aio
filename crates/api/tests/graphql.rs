@@ -61,6 +61,18 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
             .iter()
             .all(|field| field["name"] != "purchaseCost")
     );
+    let machine_type = graphql(
+        &http,
+        &endpoint,
+        "query { __type(name: \"Machine\") { fields { name } } }",
+        json!({}),
+    )
+    .await;
+    let machine_fields = machine_type["__type"]["fields"]
+        .as_array()
+        .expect("machine fields should be introspectable");
+    assert!(machine_fields.iter().any(|field| field["name"] == "purchaseCost"));
+    assert!(machine_fields.iter().any(|field| field["name"] == "model"));
 
     let first = create_machine_model(&http, &endpoint, &prefix, "one").await;
     let second = create_machine_model(&http, &endpoint, &prefix, "two").await;
