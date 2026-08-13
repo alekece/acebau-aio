@@ -317,7 +317,6 @@ dependencies = [
  "serde",
  "snafu",
  "sqlx",
- "strum 0.27.2",
 ]
 
 [[package]]

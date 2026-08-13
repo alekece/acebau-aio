@@ -1,4 +1,3 @@
-pub mod energy;
 pub mod length;
 pub mod mass;
 pub mod percentage;
@@ -21,7 +20,6 @@ use crate::{
 };
 
 pub use crate::metric::{
-    energy::{Energy, EnergyUnit},
     length::{Length, LengthUnit},
     mass::{Mass, MassUnit},
     percentage::{Percentage, PercentageError, PercentageUnit},
@@ -390,15 +388,18 @@ mod tests {
     }
 
     #[test]
-    fn test_unitless_metric_from_str() {
-        for (s, expected_result) in [("1000", Ok(Price::new(1000.))), ("  3.12   ", Ok(Price::new(3.12)))] {
+    fn test_price_from_str() {
+        for (s, expected_result) in [
+            ("1000€", Ok(Price::from_euros(1000.))),
+            ("  3.12 €  ", Ok(Price::from_euros(3.12))),
+        ] {
             assert_eq!(s.parse::<Price>(), expected_result);
         }
     }
 
     #[test]
-    fn test_unitless_metric_from_str_unexpected_unit() {
-        assert_matches!("20USD".parse::<Price>(), Err(MetricError::UnexpectedUnit { .. }));
+    fn test_price_from_str_unknown_unit() {
+        assert_matches!("20USD".parse::<Price>(), Err(MetricError::UnknownUnit { .. }));
     }
 
     #[test]

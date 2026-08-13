@@ -1,5 +1,4 @@
 use snafu::{Snafu, ensure};
-use strum::EnumString;
 
 use crate::Unit;
 
@@ -9,9 +8,8 @@ pub enum PercentageError {
     OutOfBounds { value: f32 },
 }
 
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, EnumString, Unit)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Unit)]
 pub enum PercentageUnit {
-    #[strum(serialize = "%")]
     #[unit(symbol = "%", factor = 1.)]
     #[default]
     Percent,

@@ -8,7 +8,7 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident};
 use syn::Ident;
 
-use crate::generate::{ConversionFns, DisplayImpl, MetricAlias, UnitImpl};
+use crate::generate::{ConversionFns, DisplayImpl, FromStrImpl, MetricAlias, UnitImpl};
 
 pub enum UnitShape<'a> {
     Unitless,
@@ -101,6 +101,7 @@ impl ToTokens for Unit {
         if let UnitShape::Enum(variants) = self.shape() {
             UnitImpl::new(self, variants).to_tokens(tokens);
             DisplayImpl::new(self, variants).to_tokens(tokens);
+            FromStrImpl::new(self, variants).to_tokens(tokens);
             ConversionFns::new(self, variants).to_tokens(tokens);
         }
     }

@@ -1,5 +1,19 @@
 use std::{fmt, marker::PhantomData};
 
+use snafu::Snafu;
+
+#[derive(Debug, Clone, PartialEq, Eq, Snafu)]
+#[snafu(display("unknown unit '{unit}'"))]
+pub struct UnitParseError {
+    unit: String,
+}
+
+impl UnitParseError {
+    pub fn new(unit: impl Into<String>) -> Self {
+        Self { unit: unit.into() }
+    }
+}
+
 pub struct Second;
 
 /// `Unit`, a trait indicating that a type can be used as a unit of measurement

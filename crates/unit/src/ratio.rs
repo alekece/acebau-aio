@@ -317,7 +317,7 @@ mod serde {
 
 #[cfg(test)]
 mod tests {
-    use crate::metric::{Energy, Mass, Price, Time};
+    use crate::metric::{Mass, Power, Price, Time};
 
     use super::*;
 
@@ -380,20 +380,20 @@ mod tests {
 
     #[test]
     fn test_ratio_mul() {
-        let price_per_energy = Ratio::new(Price::new(5.0), Energy::from_kilowatts(1.0));
-        let energy_per_time = Ratio::new(Energy::from_watts(500.0), Time::from_hours(1.0));
+        let price_per_energy = Ratio::new(Price::from_euros(5.0), Power::from_kilowatts(1.0));
+        let power_per_time = Ratio::new(Power::from_watts(500.0), Time::from_hours(1.0));
 
-        let price_per_time = price_per_energy * energy_per_time;
+        let price_per_time = price_per_energy * power_per_time;
 
         assert_eq!(2.5, price_per_time.get());
     }
 
     #[test]
     fn test_ratio_div() {
-        let price_per_time = Ratio::new(Price::new(120.0), Time::from_days(2.0));
-        let energy_per_time = Ratio::new(Energy::from_watts(100.0), Time::from_hours(1.0));
+        let price_per_time = Ratio::new(Price::from_euros(120.0), Time::from_days(2.0));
+        let power_per_time = Ratio::new(Power::from_watts(100.0), Time::from_hours(1.0));
 
-        let price_per_energy = price_per_time / energy_per_time;
+        let price_per_energy = price_per_time / power_per_time;
 
         assert_eq!(0.025, price_per_energy.get());
     }

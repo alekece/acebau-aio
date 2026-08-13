@@ -16,7 +16,6 @@ snafu = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 sqlx = { workspace = true, optional = true }
 derive_more = { workspace = true, features = ["display"] }
-strum = { workspace = true }
 
 [dev-dependencies]
 assert_matches = { workspace = true }
