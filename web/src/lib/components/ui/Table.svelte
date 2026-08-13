@@ -1,4 +1,6 @@
 <script lang="ts">
+	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
+	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -7,6 +9,11 @@
 		loadingRows = 5,
 		loadingColumns = 6,
 		responsiveCards = false,
+		page,
+		pageSize,
+		totalItems,
+		totalPages,
+		onPageChange,
 		class: tableClass = ''
 	}: {
 		children?: Snippet;
@@ -14,30 +21,76 @@
 		loadingRows?: number;
 		loadingColumns?: number;
 		responsiveCards?: boolean;
+		page?: number;
+		pageSize?: number;
+		totalItems?: number;
+		totalPages?: number;
+		onPageChange?: (page: number) => void | Promise<void>;
 		class?: string;
 	} = $props();
+
+	let paginated = $derived(
+		page !== undefined &&
+			pageSize !== undefined &&
+			totalItems !== undefined &&
+			totalPages !== undefined &&
+			onPageChange !== undefined
+	);
+	let firstItem = $derived(totalItems === 0 ? 0 : ((page ?? 1) - 1) * (pageSize ?? 0) + 1);
+	let lastItem = $derived(Math.min((page ?? 1) * (pageSize ?? 0), totalItems ?? 0));
 </script>
 
-<div
-	class="table-component table-wrap"
-	class:responsive-cards={responsiveCards}
-	aria-busy={loading}
->
-	<table class="table text-sm {tableClass}">
-		{#if loading}
-			<tbody>
-				{#each Array.from({ length: loadingRows }, (_, index) => index) as row (row)}
-					<tr aria-hidden="true">
-						{#each Array.from({ length: loadingColumns }, (_, index) => index) as column (column)}
-							<td><span class="block h-3 placeholder w-full animate-pulse"></span></td>
-						{/each}
-					</tr>
-				{/each}
-			</tbody>
-		{:else if children}
-			{@render children()}
-		{/if}
-	</table>
+<div class="table-component" aria-busy={loading}>
+	<div class="table-wrap" class:responsive-cards={responsiveCards}>
+		<table class="table text-sm {tableClass}">
+			{#if loading}
+				<tbody>
+					{#each Array.from({ length: loadingRows }, (_, index) => index) as row (row)}
+						<tr aria-hidden="true">
+							{#each Array.from({ length: loadingColumns }, (_, index) => index) as column (column)}
+								<td><span class="block h-3 placeholder w-full animate-pulse"></span></td>
+							{/each}
+						</tr>
+					{/each}
+				</tbody>
+			{:else if children}
+				{@render children()}
+			{/if}
+		</table>
+	</div>
+	{#if paginated}
+		<nav
+			class="flex items-center justify-between gap-4 border-t border-surface-300-700 px-4 py-3"
+			aria-label="Pagination du tableau"
+		>
+			<p class="m-0 text-sm text-surface-700-300">
+				{firstItem}–{lastItem} sur {totalItems}
+			</p>
+			<div class="flex items-center gap-2">
+				<button
+					class="btn-icon preset-tonal-surface"
+					type="button"
+					disabled={loading || page === 1}
+					aria-label="Page précédente"
+					onclick={() => onPageChange?.((page ?? 1) - 1)}
+				>
+					<ChevronLeft size={16} />
+				</button>
+				<span class="min-w-20 text-center text-sm text-surface-700-300">
+					Page {page} sur {Math.max(totalPages ?? 0, 1)}
+				</span>
+				<button
+					class="btn-icon preset-tonal-surface"
+					type="button"
+					disabled={loading || page === totalPages || totalPages === 0}
+					aria-label="Page suivante"
+					onclick={() => onPageChange?.((page ?? 1) + 1)}
+				>
+					<ChevronRight size={16} />
+				</button>
+			</div>
+		</nav>
+	{/if}
 </div>
 
 <style>

@@ -1,6 +1,6 @@
 use derive_more::From;
 use proc_macro2::TokenStream;
-use quote::{quote, ToTokens};
+use quote::{ToTokens, quote};
 
 use crate::table::Table;
 

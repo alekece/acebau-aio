@@ -25,20 +25,37 @@ impl ToTokens for QueryStruct<'_> {
                     ctx: &::async_graphql::Context<'_>,
                     page: ::std::option::Option<i32>,
                     page_size: ::std::option::Option<i32>,
-                ) -> ::async_graphql::Result<Vec<::acebau_database::Record<#ident>>> {
+                ) -> ::async_graphql::Result<::acebau_database::Page<#ident>> {
                     use ::acebau_database::Repository as _;
 
                     let mut database = ctx.data::<::acebau_database::Database>()?.clone();
                     let page = page.unwrap_or(1);
                     let page_size = page_size.unwrap_or(10);
-                    let page = u32::try_from(page).map_err(|_| "page number must be greater than zero")?;
-                    let page_size = u32::try_from(page_size).map_err(|_| "page size must be positive")?;
-                    let options = ::acebau_database::FetchOptions::default().with_page(page, page_size)?;
-
-                    Ok(database
+                    let page_number = u32::try_from(page)
+                        .map_err(|_| "page number must be greater than zero")?;
+                    let size = u32::try_from(page_size)
+                        .map_err(|_| "page size must be positive")?;
+                    let options = ::acebau_database::FetchOptions::default()
+                        .with_page(page_number, size)?;
+                    let items = database
                         .repository::<#ident>()
-                        .fetch_all(options)
-                        .await?)
+                        .fetch_all(options.clone())
+                        .await?;
+                    let total_items = database
+                        .repository::<#ident>()
+                        .count(options)
+                        .await?;
+                    let total_pages = total_items.div_ceil(u64::from(size));
+
+                    Ok(::acebau_database::Page {
+                        items,
+                        page,
+                        page_size,
+                        total_items: i32::try_from(total_items)
+                            .map_err(|_| "record count exceeds the GraphQL integer range")?,
+                        total_pages: i32::try_from(total_pages)
+                            .map_err(|_| "page count exceeds the GraphQL integer range")?,
+                    })
                 }
 
                 async fn #getter_by_id_fn(

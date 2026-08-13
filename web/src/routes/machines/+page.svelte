@@ -54,6 +54,13 @@
 		state: MachineState;
 		model: MachineModel;
 	};
+	type MachinePage = {
+		items: Machine[];
+		page: number;
+		pageSize: number;
+		totalItems: number;
+		totalPages: number;
+	};
 
 	type ModelForm = {
 		brand: string;
@@ -75,6 +82,13 @@
 	let { data }: PageProps = $props();
 	let models = $state<MachineModel[]>([]);
 	let machines = $state<Machine[]>([]);
+	let machinePage = $state<Omit<MachinePage, 'items'>>({
+		page: 1,
+		pageSize: 10,
+		totalItems: 0,
+		totalPages: 0
+	});
+	let pageLoading = $state(false);
 	let loading = $state(false);
 	let saving = $state(false);
 	let error = $state('');
@@ -105,6 +119,12 @@
 	$effect(() => {
 		models = data.models;
 		machines = data.machines;
+		machinePage = {
+			page: data.machinePage.page,
+			pageSize: data.machinePage.pageSize,
+			totalItems: data.machinePage.totalItems,
+			totalPages: data.machinePage.totalPages
+		};
 		if (data.loadError) error = data.loadError;
 	});
 	let selectedMachine = $derived(machines.find((machine) => machine.id === selectedMachineId));
@@ -193,6 +213,43 @@
 			throw new Error(message || 'La requête GraphQL a échoué.');
 		}
 		return result.data;
+	}
+
+	async function loadMachinePage(page: number) {
+		if (page < 1 || pageLoading) return;
+
+		pageLoading = true;
+		error = '';
+		try {
+			const result = await gql<{ machines: MachinePage }>(
+				`query MachineTablePage($page: Int!, $pageSize: Int!) {
+					machines(page: $page, pageSize: $pageSize) {
+						items {
+							id surname modelId purchaseCost { value unit } printingTime { value unit } state
+							model {
+								id brand name
+								maintenanceCost { value numeratorUnit denominatorUnit }
+								lifetime { value unit }
+								averagePower { value unit }
+							}
+						}
+						page pageSize totalItems totalPages
+					}
+				}`,
+				{ page, pageSize: 10 }
+			);
+			machines = result.machines.items;
+			machinePage = {
+				page: result.machines.page,
+				pageSize: result.machines.pageSize,
+				totalItems: result.machines.totalItems,
+				totalPages: result.machines.totalPages
+			};
+		} catch (cause) {
+			error = `La page des machines ne peut pas être chargée. ${cause instanceof Error ? cause.message : ''}`;
+		} finally {
+			pageLoading = false;
+		}
 	}
 
 	function openModelManager() {
@@ -673,7 +730,17 @@
 					><Cpu size={16} />{models.length} modèle{models.length > 1 ? 's' : ''}</button
 				>
 			{/snippet}
-			<Table responsiveCards class="min-w-[68rem] table-fixed">
+			<Table
+				responsiveCards
+				loading={pageLoading}
+				loadingColumns={9}
+				page={machinePage.page}
+				pageSize={machinePage.pageSize}
+				totalItems={machinePage.totalItems}
+				totalPages={machinePage.totalPages}
+				onPageChange={loadMachinePage}
+				class="min-w-[68rem] table-fixed"
+			>
 				<colgroup>
 					<col class="w-10" />
 					<col class="w-42" />
@@ -702,7 +769,9 @@
 							onkeydown={(event) => event.key === 'Enter' && openMachineDetails(machine)}
 							tabindex="0"
 						>
-							<td data-label="" class="mobile-card-hidden text-surface-700-300">{index + 1}</td>
+							<td data-label="" class="mobile-card-hidden text-surface-700-300">
+								{(machinePage.page - 1) * machinePage.pageSize + index + 1}
+							</td>
 							<td data-label="Machine" onclick={(event) => event.stopPropagation()}>
 								{#if machineEdits[machine.id]}
 									<div class="grid gap-2">

@@ -303,6 +303,10 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
                 id productionTaskId pieceId filamentSupplyId quantity machineId state startedAt
             }
             machines(page: 1, pageSize: 25) { id surname }
+            machinesPage(page: 1, pageSize: 25) {
+                items { id surname }
+                page pageSize totalItems totalPages
+            }
             applicationSettings { defaultTimeUnit defaultMassUnit defaultPageSize }
             operationalOverview { activeProducts activeVariants openOrders pendingProductions }
         }"#,
@@ -317,6 +321,13 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
             .any(|product| product["name"] == unique_name)
     );
     assert_eq!(listed["applicationSettings"][0]["defaultPageSize"], 10);
+    assert_eq!(listed["machinesPage"]["page"], 1);
+    assert_eq!(listed["machinesPage"]["pageSize"], 25);
+    assert!(
+        listed["machinesPage"]["totalItems"]
+            .as_i64()
+            .is_some_and(|count| count >= 1)
+    );
     assert!(
         listed["supplies"]
             .as_array()

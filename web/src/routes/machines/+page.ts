@@ -21,38 +21,54 @@ type Machine = {
 	model: MachineModel;
 };
 
-type MachinesResult = { machineModels: MachineModel[]; machines: Machine[] };
+type MachinePage = {
+	items: Machine[];
+	page: number;
+	pageSize: number;
+	totalItems: number;
+	totalPages: number;
+};
 
-const fallback: MachinesResult = { machineModels: [], machines: [] };
+type MachinesResult = { machineModels: { items: MachineModel[] }; machines: MachinePage };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
-	const { defaultPageSize } = await parent();
+const fallback: MachinesResult = {
+	machineModels: { items: [] },
+	machines: { items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 0 }
+};
+
+export const load: PageLoad = async ({ fetch }) => {
 	const result = await graphqlOrFallback<MachinesResult>(
 		fetch,
-		`query MachinesPage($pageSize: Int!) {
-			machineModels(pageSize: $pageSize) {
-				id brand name
-				maintenanceCost { value numeratorUnit denominatorUnit }
-				lifetime { value unit }
-				averagePower { value unit }
-			}
-			machines(pageSize: $pageSize) {
-				id surname modelId purchaseCost { value unit } printingTime { value unit } state
-				model {
+		`query MachinesPage($page: Int!, $pageSize: Int!) {
+			machineModels(pageSize: 100) {
+				items {
 					id brand name
 					maintenanceCost { value numeratorUnit denominatorUnit }
 					lifetime { value unit }
 					averagePower { value unit }
 				}
 			}
+			machines(page: $page, pageSize: $pageSize) {
+				items {
+					id surname modelId purchaseCost { value unit } printingTime { value unit } state
+					model {
+						id brand name
+						maintenanceCost { value numeratorUnit denominatorUnit }
+						lifetime { value unit }
+						averagePower { value unit }
+					}
+				}
+				page pageSize totalItems totalPages
+			}
 		}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page: 1, pageSize: 10 }
 	);
 
 	return {
-		models: result.value.machineModels,
-		machines: result.value.machines,
+		models: result.value.machineModels.items,
+		machines: result.value.machines.items,
+		machinePage: result.value.machines,
 		usingFallback: result.usingFallback,
 		loadError: result.error
 	};

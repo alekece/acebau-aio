@@ -94,6 +94,7 @@ pub trait Repository<T: ObjectType + TypeName> {
     fn update(&mut self, id: Uuid, item: &T) -> impl Future<Output = Result<Record<T>, Self::Error>> + Send;
     fn fetch_by_id(&mut self, id: Uuid) -> impl Future<Output = Result<Record<T>, Self::Error>> + Send;
     fn fetch_all(&mut self, options: FetchOptions) -> impl Future<Output = Result<Vec<Record<T>>, Self::Error>> + Send;
+    fn count(&mut self, options: FetchOptions) -> impl Future<Output = Result<u64, Self::Error>> + Send;
     fn delete(&mut self, id: Uuid) -> impl Future<Output = Result<(), Self::Error>> + Send;
 }
 
@@ -143,6 +144,10 @@ where
 
     async fn fetch_all(&mut self, options: FetchOptions) -> Result<Vec<Record<T>>, Self::Error> {
         self.database.fetch_all(options).await
+    }
+
+    async fn count(&mut self, options: FetchOptions) -> Result<u64, Self::Error> {
+        self.database.count(options).await
     }
 
     async fn delete(&mut self, id: Uuid) -> Result<(), Self::Error> {

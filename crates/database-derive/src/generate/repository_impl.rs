@@ -183,6 +183,37 @@ impl RepositoryImpl<'_> {
         }
     }
 
+    fn generate_count_fn(&self) -> TokenStream {
+        let query = format!("SELECT COUNT(*) FROM {}", self.0.name());
+
+        quote! {
+            async fn count(
+                &mut self,
+                options: ::acebau_database::FetchOptions,
+            ) -> ::std::result::Result<u64, Self::Error> {
+                let mut query_builder = sqlx::QueryBuilder::new(#query);
+
+                for (i, status) in options.statuses().enumerate() {
+                    if i == 0 {
+                        query_builder.push(" WHERE status = ").push_bind(status);
+                    } else {
+                        query_builder.push(" OR status = ").push_bind(status);
+                    }
+                }
+
+                let count: i64 = query_builder
+                    .build_query_scalar()
+                    .fetch_one(<Self as ::acebau_database::Executor>::executor(self))
+                    .await
+                    .map_err(Self::Error::from)?;
+
+                u64::try_from(count).map_err(|_| Self::Error::Internal {
+                    source: sqlx::Error::Protocol("database returned a negative record count".into()),
+                })
+            }
+        }
+    }
+
     fn generate_delete_fn(&self) -> TokenStream {
         let query = format!("DELETE FROM {} WHERE id = $1", self.0.name());
 
@@ -215,6 +246,7 @@ impl ToTokens for RepositoryImpl<'_> {
         let update_fn = self.generate_update_fn();
         let fetch_by_id_fn = self.generate_fetch_by_id_fn();
         let fetch_all_fn = self.generate_fetch_all_fn();
+        let count_fn = self.generate_count_fn();
         let delete_fn = self.generate_delete_fn();
 
         tokens.extend(quote! {
@@ -233,6 +265,7 @@ impl ToTokens for RepositoryImpl<'_> {
                 #update_fn
                 #fetch_by_id_fn
                 #fetch_all_fn
+                #count_fn
                 #delete_fn
             }
         });
