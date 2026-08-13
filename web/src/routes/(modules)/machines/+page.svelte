@@ -103,17 +103,13 @@
 	let loading = $state(false);
 	let saving = $state(false);
 	let error = $state('');
-	type ModalKind = 'models' | 'new-machine' | 'machine' | 'confirm-delete-machine' | null;
+	type ModalKind = 'models' | 'new-machine' | 'confirm-delete-machine' | null;
 	let activeModal = $state<ModalKind>(null);
 	let onboardingStep = $state<1 | 2 | 3>(1);
 	let editingModelId = $state<string | null>(null);
 	let selectedMachineId = $state<string | null>(null);
 	let modelForm = $state<ModelForm>(emptyModel());
 	let machineForm = $state<MachineForm>(emptyMachine());
-	let machineEditForm = $state<{ surname: string; state: Machine['state'] }>({
-		surname: '',
-		state: 'available'
-	});
 	let machineEdits = $state<
 		Record<
 			string,
@@ -389,12 +385,6 @@
 		}
 	}
 
-	function openMachineDetails(machine: Machine) {
-		selectedMachineId = machine.id;
-		machineEditForm = { surname: machine.surname, state: machine.state };
-		activeModal = 'machine';
-	}
-
 	function requestDeleteMachine(machine: Machine) {
 		selectedMachineId = machine.id;
 		activeModal = 'confirm-delete-machine';
@@ -509,24 +499,6 @@
 			await invalidateAll();
 		} catch (cause) {
 			error = `Le modèle ne peut pas être supprimé. ${cause instanceof Error ? cause.message : ''}`;
-		} finally {
-			saving = false;
-		}
-	}
-
-	async function saveMachineDetails() {
-		if (!selectedMachineId) return;
-		saving = true;
-		error = '';
-		try {
-			await gql(
-				`mutation($id: String!, $input: MachineChangeset!) { patchMachine(id: $id, input: $input) { id } }`,
-				{ id: selectedMachineId, input: machineEditForm }
-			);
-			closeModal();
-			await invalidateAll();
-		} catch (cause) {
-			error = `La machine ne peut pas être modifiée. ${cause instanceof Error ? cause.message : ''}`;
 		} finally {
 			saving = false;
 		}
@@ -933,16 +905,13 @@
 					{/each}
 					{#each machines as machine, index (machine.id)}
 						<tr
-							class="cursor-pointer transition hover:bg-surface-100-900"
+							class="transition hover:bg-surface-100-900"
 							class:bg-tertiary-50-950={pinnedMachineIds.includes(machine.id)}
-							onclick={() => openMachineDetails(machine)}
-							onkeydown={(event) => event.key === 'Enter' && openMachineDetails(machine)}
-							tabindex="0"
 						>
 							<td data-label="" class="mobile-card-hidden text-surface-700-300">
 								{(machinePage.page - 1) * machinePage.pageSize + index + 1}
 							</td>
-							<td data-label="Machine" onclick={(event) => event.stopPropagation()}>
+							<td data-label="Machine">
 								{#if machineEdits[machine.id]}
 									<div class="grid gap-2">
 										<Input
@@ -958,7 +927,7 @@
 								{:else}<strong>{machine.surname}</strong><small>#{machine.id.slice(0, 8)}</small
 									>{/if}
 							</td>
-							<td data-label="Modèle" onclick={(event) => event.stopPropagation()}>
+							<td data-label="Modèle">
 								{#if machineEdits[machine.id]}
 									<Input
 										as="select"
@@ -976,7 +945,7 @@
 									<small>{machine.model?.brand ?? '—'}</small>
 								{/if}
 							</td>
-							<td data-label="État" onclick={(event) => event.stopPropagation()}
+							<td data-label="État"
 								>{#if machineEdits[machine.id]}<SelectableBadge
 										value={machineEdits[machine.id].state}
 										options={machineStateOptions}
@@ -990,11 +959,7 @@
 							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
 							<td data-label="Coût effectif">{hardcodedPowerCost}</td>
 							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
-							<td
-								data-label=""
-								class="mobile-card-actions"
-								onclick={(event) => event.stopPropagation()}
-							>
+							<td data-label="" class="mobile-card-actions">
 								{#if machineEdits[machine.id]}
 									<IconAction
 										label={`Confirmer la modification de ${machine.surname}`}
@@ -1203,110 +1168,6 @@
 							tone="tertiary"
 							disabled={saving}>{saving ? 'Création…' : 'Créer la machine'}</Button
 						>
-					</div>
-				</form>
-			{/snippet}
-		</Modal>
-	{/if}
-
-	{#if activeModal === 'machine' && selectedMachine}
-		<Modal
-			open={true}
-			onOpenChange={handleModalChange}
-			contentClasses="w-full max-w-xl rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
-		>
-			{#snippet content()}
-				<div class="mb-6 flex items-start justify-between gap-4">
-					<div>
-						<p class="mb-1 text-xs font-semibold tracking-wider text-surface-700-300 uppercase">
-							Détail machine
-						</p>
-						<h2 class="text-2xl font-semibold text-surface-900-100">{selectedMachine.surname}</h2>
-					</div>
-					<button
-						class="btn-icon preset-tonal-surface"
-						type="button"
-						aria-label="Fermer"
-						onclick={closeModal}><X size={18} /></button
-					>
-				</div>
-				<div class="mb-5 grid grid-cols-2 gap-3 rounded-base bg-surface-100-900 p-4 text-sm">
-					<div>
-						<span class="block text-xs text-surface-700-300">Modèle</span><strong
-							>{selectedMachine.model?.brand} · {selectedMachine.model?.name}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Temps d’impression</span><strong
-							>{metricLabel(selectedMachine.printingTime)}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Prochaine maintenance</span><strong
-							>{hardcodedNextMaintenance}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Coût effectif</span><strong
-							>{hardcodedPowerCost}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Puissance moyenne</span><strong
-							>{selectedMachine.model
-								? metricLabel(selectedMachine.model.averagePower)
-								: '—'}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Prix d’achat</span><strong
-							>{metricLabel(selectedMachine.purchaseCost)}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Maintenance</span><strong
-							>{selectedMachine.model
-								? ratioLabel(selectedMachine.model.maintenanceCost)
-								: '—'}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Durée de vie</span><strong
-							>{selectedMachine.model ? metricLabel(selectedMachine.model.lifetime) : '—'}</strong
-						>
-					</div>
-				</div>
-				<form
-					onsubmit={(event) => {
-						event.preventDefault();
-						saveMachineDetails();
-					}}
-					class="grid gap-4"
-				>
-					<label class="label">Surnom<Input required bind:value={machineEditForm.surname} /></label
-					><label class="label"
-						>État<Input as="select" bind:value={machineEditForm.state}
-							><option value="available">Disponible</option><option value="running"
-								>En production</option
-							><option value="maintenance">Maintenance</option><option value="broken"
-								>En panne</option
-							></Input
-						></label
-					>
-					<div class="flex justify-between gap-2.5">
-						<Button
-							variant="outlined"
-							tone="error"
-							type="button"
-							onclick={deleteMachine}
-							disabled={saving}><Trash2 size={16} />Supprimer</Button
-						>
-						<div class="flex gap-2.5">
-							<Button variant="outlined" tone="secondary" onclick={closeModal}>Annuler</Button
-							><Button type="submit" tone="tertiary" disabled={saving}
-								>{saving ? 'Enregistrement…' : 'Enregistrer'}</Button
-							>
-						</div>
 					</div>
 				</form>
 			{/snippet}
