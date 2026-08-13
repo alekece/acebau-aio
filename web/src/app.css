@@ -3,6 +3,7 @@
 @plugin '@tailwindcss/typography';
 
 @import '@skeletonlabs/skeleton';
+@import '@skeletonlabs/skeleton-svelte';
 @import '../theme.css';
 @source '../node_modules/@skeletonlabs/skeleton-svelte/dist';
 
@@ -163,10 +164,7 @@ textarea {
 }
 
 button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
+a:focus-visible {
 	outline: 3px solid #8bb8ff;
 	outline-offset: 2px;
 }
