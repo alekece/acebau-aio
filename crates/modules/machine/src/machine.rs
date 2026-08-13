@@ -29,7 +29,6 @@ pub enum MachineState {
 pub struct MachineModel {
     pub brand: String,
     pub name: String,
-    pub purchase_cost: Price,
     pub maintenance_cost: PricePerTime,
     pub lifetime: Time,
     pub average_power: Power,
@@ -42,6 +41,8 @@ pub struct Machine {
     #[table(relationship(name = model, target = MachineModel))]
     pub model_id: Uuid,
     pub surname: String,
+    #[table(skip)]
+    pub purchase_cost: Price,
     pub printing_time: Time,
     pub state: MachineState,
 }

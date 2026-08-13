@@ -97,6 +97,7 @@ impl RepositoryImpl<'_> {
         let (field_names, field_values, field_idents): (Vec<_>, Vec<_>, Vec<_>) = self
             .0
             .fields()
+            .filter(|field| !field.skip())
             .enumerate()
             .map(|(index, field)| (field.name(), format!("${}", index + 1), field.ident()))
             .multiunzip();

@@ -37,15 +37,35 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
             .iter()
             .any(|field| field["name"] == "value" && field["type"]["ofType"]["name"] == "Decimal")
     );
+    let machine_inputs = graphql(
+        &http,
+        &endpoint,
+        r#"query {
+			machineInput: __type(name: "MachineInput") { inputFields { name } }
+			machineChangeset: __type(name: "MachineChangeset") { inputFields { name } }
+		}"#,
+        json!({}),
+    )
+    .await;
+    assert!(
+        machine_inputs["machineInput"]["inputFields"]
+            .as_array()
+            .expect("machine input fields should be introspectable")
+            .iter()
+            .any(|field| field["name"] == "purchaseCost")
+    );
+    assert!(
+        machine_inputs["machineChangeset"]["inputFields"]
+            .as_array()
+            .expect("machine changeset fields should be introspectable")
+            .iter()
+            .all(|field| field["name"] != "purchaseCost")
+    );
 
     let first = create_machine_model(&http, &endpoint, &prefix, "one").await;
     let second = create_machine_model(&http, &endpoint, &prefix, "two").await;
     let third = create_machine_model(&http, &endpoint, &prefix, "three").await;
     assert_eq!(first["name"], "one");
-    assert_eq!(
-        first["purchaseCost"],
-        json!({ "value": "0.1234567890123456789012345678", "unit": "€" })
-    );
     assert_eq!(
         first["maintenanceCost"],
         json!({
@@ -113,7 +133,6 @@ fn machine_model_input(brand: &str, name: &str) -> Value {
     json!({
         "brand": brand,
         "name": name,
-        "purchaseCost": { "value": "0.1234567890123456789012345678", "unit": "€" },
         "maintenanceCost": {
             "value": "5",
             "numeratorUnit": "€",
@@ -131,7 +150,6 @@ async fn create_machine_model(http: &reqwest::Client, endpoint: &str, brand: &st
         r#"mutation($input: MachineModelInput!) {
             createMachineModel(input: $input) {
                 id name
-                purchaseCost { value unit }
                 maintenanceCost { value numeratorUnit denominatorUnit }
                 lifetime { value unit }
                 averagePower { value unit }
@@ -237,7 +255,6 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
         json!({"input": {
             "brand": "Integration",
             "name": format!("Production model {}", std::process::id()),
-            "purchaseCost": { "value": "100", "unit": "€" },
             "maintenanceCost": {
                 "value": "5",
                 "numeratorUnit": "€",
@@ -257,6 +274,7 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
         json!({"input": {
             "modelId": machine_model["createMachineModel"]["id"],
             "surname": format!("Production printer {}", std::process::id()),
+            "purchaseCost": { "value": "100", "unit": "€" },
             "printingTime": { "value": "0", "unit": "h" },
             "state": "available"
         }}),
