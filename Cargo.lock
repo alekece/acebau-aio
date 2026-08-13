@@ -464,6 +464,7 @@ dependencies = [
  "num-traits",
  "pin-project-lite",
  "regex",
+ "rust_decimal",
  "serde",
  "serde_json",
  "serde_urlencoded",

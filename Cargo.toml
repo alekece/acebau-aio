@@ -73,7 +73,7 @@ itertools = "0.14.0"
 assert_matches = "1.5.0"
 argon2 = "0.5.3"
 axum = "0.8.4"
-async-graphql = { version = "7.0.17", features = ["uuid", "chrono"] }
+async-graphql = { version = "7.0.17", features = ["uuid", "chrono", "decimal"] }
 async-graphql-axum = "7.0.17"
 email_address = "0.2.9"
 tokio = "1.47.1"

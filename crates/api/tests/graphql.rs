@@ -19,6 +19,25 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
     let endpoint = format!("http://{address}/");
     let http = reqwest::Client::new();
     let prefix = format!("graphql-test-{}", std::process::id());
+    let metric_input_type = graphql(
+        &http,
+        &endpoint,
+        r#"query {
+            __type(name: "PriceMetricInput") {
+                inputFields { name type { kind name ofType { name } } }
+            }
+        }"#,
+        json!({}),
+    )
+    .await;
+    assert!(
+        metric_input_type["__type"]["inputFields"]
+            .as_array()
+            .expect("metric input fields should be introspectable")
+            .iter()
+            .any(|field| field["name"] == "value" && field["type"]["ofType"]["name"] == "Decimal")
+    );
+
     let first = create_machine_model(&http, &endpoint, &prefix, "one").await;
     let second = create_machine_model(&http, &endpoint, &prefix, "two").await;
     let third = create_machine_model(&http, &endpoint, &prefix, "three").await;

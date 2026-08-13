@@ -274,17 +274,15 @@ mod graphql {
 
     use async_graphql::{
         ContextSelectionSet, InputObject, InputType, InputValueError, InputValueResult, OutputType, Positioned,
-        ServerResult, Value,
-        indexmap::IndexMap,
-        parser::types::Field,
-        registry::{Deprecation, MetaInputValue, MetaType, MetaTypeId, Registry},
+        ServerResult, Value, indexmap::IndexMap, parser::types::Field, registry::Registry,
     };
 
     use super::*;
+    use crate::graphql;
 
     #[derive(InputObject)]
     struct MetricInput {
-        value: String,
+        value: Decimal,
         unit: String,
     }
 
@@ -300,36 +298,11 @@ mod graphql {
         }
 
         fn create_type_info(registry: &mut Registry) -> String {
-            registry.create_input_type::<Self, _>(MetaTypeId::InputObject, |registry| MetaType::InputObject {
-                name: <Self as InputType>::type_name().into_owned(),
-                description: None,
-                input_fields: ["value", "unit"]
-                    .into_iter()
-                    .map(|name| {
-                        (
-                            name.to_owned(),
-                            MetaInputValue {
-                                name: name.to_owned(),
-                                description: None,
-                                ty: <String as InputType>::create_type_info(registry),
-                                deprecation: Deprecation::NoDeprecated,
-                                default_value: None,
-                                visible: None,
-                                inaccessible: false,
-                                tags: Vec::new(),
-                                is_secret: false,
-                                directive_invocations: Vec::new(),
-                            },
-                        )
-                    })
-                    .collect::<IndexMap<_, _>>(),
-                visible: None,
-                inaccessible: false,
-                tags: Vec::new(),
-                rust_typename: Some(std::any::type_name::<Self>()),
-                oneof: false,
-                directive_invocations: Vec::new(),
-            })
+            let input_fields = IndexMap::from([
+                graphql::create_meta_input_value::<Decimal>(registry, "value"),
+                graphql::create_meta_input_value::<String>(registry, "unit"),
+            ]);
+            graphql::create_input_type::<Self>(registry, input_fields)
         }
 
         fn parse(value: Option<Value>) -> InputValueResult<Self> {
@@ -341,7 +314,7 @@ mod graphql {
 
         fn to_value(&self) -> Value {
             MetricInput {
-                value: self.value.to_string(),
+                value: self.value,
                 unit: self.unit.to_string(),
             }
             .to_value()

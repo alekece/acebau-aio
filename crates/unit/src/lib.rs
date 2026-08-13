@@ -6,6 +6,9 @@ pub mod metric;
 pub mod ratio;
 pub mod unit;
 
+#[cfg(feature = "graphql")]
+mod graphql;
+
 pub use acebau_unit_derive::Unit;
 pub use metric::{Length, Mass, Metric, MetricError, Percentage, PercentageError, Power, Price, Time};
 pub use ratio::Ratio;
