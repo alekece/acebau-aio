@@ -137,7 +137,6 @@
 			.length
 	);
 	const hardcodedPowerCost = '0,25 €/h';
-	const hardcodedWorkload = '68 %';
 	const hardcodedNextMaintenance = 'À planifier';
 	const onboardingSteps = ['Créer un modèle', 'Ajouter une machine', 'Vérifier les informations'];
 	const timeUnits = [
@@ -535,7 +534,7 @@
 				<span class="h-5 placeholder w-40 animate-pulse"></span>
 				<span class="h-3 placeholder w-64 animate-pulse"></span>
 			</div>
-			<Table loading loadingColumns={9} />
+			<Table loading loadingColumns={8} />
 		</section>
 	{:else if models.length === 0 || machines.length === 0}
 		{#if models.length === 0}
@@ -709,7 +708,7 @@
 		{/if}
 	{:else}
 		<section
-			class="mb-6 grid grid-cols-4 gap-3.5 max-[1000px]:grid-cols-2 max-[850px]:grid-cols-1"
+			class="mb-6 grid grid-cols-3 gap-3.5 max-[1000px]:grid-cols-2 max-[850px]:grid-cols-1"
 			aria-label="Indicateurs machines"
 		>
 			<Kpi
@@ -717,7 +716,6 @@
 				value={`${usableMachines} / ${machines.length}`}
 				detail="Disponibles ou en production"
 			/>
-			<Kpi label="Charge à 7 jours" value="—" />
 			<Kpi label="Échecs / 100 h · 30 jours" value="—" />
 			<Kpi label="Maintenance à prévoir" value={unavailableMachines} />
 		</section>
@@ -733,32 +731,29 @@
 			<Table
 				responsiveCards
 				loading={pageLoading}
-				loadingColumns={9}
+				loadingColumns={8}
 				page={machinePage.page}
 				pageSize={machinePage.pageSize}
 				totalItems={machinePage.totalItems}
 				totalPages={machinePage.totalPages}
 				onPageChange={loadMachinePage}
-				class="min-w-[68rem] table-fixed"
+				class="min-w-[62rem] table-fixed"
 			>
 				<colgroup>
 					<col class="w-10" />
 					<col class="w-42" />
 					<col class="w-40" />
 					<col class="w-38" />
-					<col class="w-20" />
 					<col class="w-32" />
-					<col class="w-40" />
 					<col class="w-28" />
+					<col class="w-40" />
 					<col class="w-22" />
 				</colgroup>
 				<thead
 					><tr
-						><th>#</th><th>Machine</th><th>Modèle</th><th>État</th><th>Charge</th><th
-							>Temps d’impression</th
-						><th>Prochaine maintenance</th><th>Coût effectif</th><th
-							><span class="sr-only">Actions</span></th
-						></tr
+						><th>#</th><th>Machine</th><th>Modèle</th><th>État</th><th>Temps d’impression</th><th
+							>Coût effectif</th
+						><th>Prochaine maintenance</th><th><span class="sr-only">Actions</span></th></tr
 					></thead
 				>
 				<tbody>
@@ -817,10 +812,9 @@
 									/>
 								{:else}<MachineStatus state={machine.state} />{/if}</td
 							>
-							<td data-label="Charge">{hardcodedWorkload}</td>
 							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
-							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
 							<td data-label="Coût effectif">{hardcodedPowerCost}</td>
+							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
 							<td
 								data-label=""
 								class="mobile-card-actions"
@@ -1070,11 +1064,6 @@
 					<div>
 						<span class="block text-xs text-surface-700-300">Temps d’impression</span><strong
 							>{metricLabel(selectedMachine.printingTime)}</strong
-						>
-					</div>
-					<div>
-						<span class="block text-xs text-surface-700-300">Charge</span><strong
-							>{hardcodedWorkload}</strong
 						>
 					</div>
 					<div>
