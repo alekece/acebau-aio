@@ -22,12 +22,10 @@ enum BackupError {
 pub(crate) enum DatabaseCommand {
     /// Apply all application database migrations.
     Setup,
-    /// Permanently remove all application data without removing tables.
-    Reset {
-        /// Required acknowledgement for this destructive operation.
-        #[arg(long)]
-        confirm: bool,
-    },
+    /// Remove all tables and data, then set up the database again.
+    Reset,
+    /// Permanently remove all application data while preserving tables.
+    Clear,
     /// Create or restore a PostgreSQL custom-format backup.
     Backup(BackupArgs),
 }
@@ -53,7 +51,8 @@ impl DatabaseCommand {
 
         match self {
             Self::Setup => setup(&database).await,
-            Self::Reset { confirm } => reset(&database, confirm).await,
+            Self::Reset => reset(&database).await,
+            Self::Clear => clear(&database).await,
             Self::Backup(args) => {
                 if let Some(output) = args.dump {
                     dump(&database_url, &output, args.force).await
@@ -68,6 +67,13 @@ impl DatabaseCommand {
 }
 
 async fn setup(database: &Database) -> Result<(), Box<dyn Error>> {
+    migrate(database).await?;
+    println!("Database setup completed successfully");
+
+    Ok(())
+}
+
+async fn migrate(database: &Database) -> Result<(), Box<dyn Error>> {
     database
         .migrate(
             &[
@@ -89,7 +95,6 @@ async fn setup(database: &Database) -> Result<(), Box<dyn Error>> {
             MigrationOptions::default(),
         )
         .await?;
-    println!("Database setup completed successfully");
 
     Ok(())
 }
@@ -171,11 +176,15 @@ async fn restore(database_url: &Url, input: &Path) -> Result<(), Box<dyn Error>>
     Ok(())
 }
 
-async fn reset(database: &Database, confirm: bool) -> Result<(), Box<dyn Error>> {
-    if !confirm {
-        return Err("database reset refused".into());
-    }
+async fn reset(database: &Database) -> Result<(), Box<dyn Error>> {
+    database.reset().await?;
+    migrate(database).await?;
+    println!("Database reset completed successfully");
 
+    Ok(())
+}
+
+async fn clear(database: &Database) -> Result<(), Box<dyn Error>> {
     database.clear_all().await?;
     println!("Database data cleared successfully");
 

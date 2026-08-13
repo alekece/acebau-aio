@@ -137,6 +137,23 @@ impl Database {
 
         Ok(())
     }
+
+    /// Removes every object from the public schema and recreates the empty schema.
+    ///
+    /// Callers must run migrations afterwards before the database can be used again.
+    pub async fn reset(&self) -> Result<(), DatabaseError> {
+        sqlx::raw_sql(
+            r#"
+			drop schema public cascade;
+			create schema public authorization current_user;
+			"#,
+        )
+        .execute(&self.executor)
+        .await
+        .context(InternalSnafu)?;
+
+        Ok(())
+    }
 }
 
 impl<'a> Executor<'a> for Database {
