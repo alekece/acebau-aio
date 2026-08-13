@@ -517,7 +517,7 @@
 							/>
 						</div>
 						<div class="flex justify-end border-t border-surface-300-700 pt-5">
-							<Button type="submit" tone="tertiary">Continuer<Plus size={16} /></Button>
+							<Button type="submit" tone="tertiary">Continuer</Button>
 						</div>
 					</form>
 				{:else if onboardingStep === 2}

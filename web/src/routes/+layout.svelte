@@ -3,7 +3,7 @@
 	import type { LayoutProps } from './$types';
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { AppBar } from '@skeletonlabs/skeleton-svelte';
-	import LightSwitch from '$lib/components/LightSwitch.svelte';
+	import LightSwitch from '$lib/components/ui/LightSwitch.svelte';
 	import Bell from '@lucide/svelte/icons/bell';
 	import Menu from '@lucide/svelte/icons/menu';
 	import { setContext } from 'svelte';
