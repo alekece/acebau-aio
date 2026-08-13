@@ -21,5 +21,6 @@ acebau-settings = { workspace = true }
 clap = { workspace = true, features = ["env"] }
 clap-config-fallback = { workspace = true }
 serde = { workspace = true }
+snafu = { workspace = true }
 tokio = { workspace = true, features = ["macros", "process", "rt-multi-thread"] }
 url = { workspace = true, features = ["serde"] }

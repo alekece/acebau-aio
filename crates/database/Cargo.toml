@@ -27,7 +27,6 @@ url = { workspace = true }
 sqlx = { workspace = true, features = ["chrono", "uuid"] }
 strum = { workspace = true, features = ["derive"] }
 async-graphql = { workspace = true }
-tokio = { workspace = true, features = ["process"] }
 
 [dev-dependencies]
 assert_matches = { workspace = true }

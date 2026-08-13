@@ -99,6 +99,7 @@ dependencies = [
  "clap",
  "clap-config-fallback",
  "serde",
+ "snafu",
  "tokio",
  "url",
 ]
@@ -136,7 +137,6 @@ dependencies = [
  "snafu",
  "sqlx",
  "strum 0.27.2",
- "tokio",
  "url",
  "uuid",
 ]

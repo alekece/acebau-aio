@@ -6,7 +6,17 @@ use std::{
 use acebau_database::{Database, MigrationOptions};
 use clap::{ArgGroup, Args, Subcommand};
 use clap_config_fallback::{ConfigArgs, ConfigSubcommand};
+use snafu::Snafu;
+use tokio::process::Command;
 use url::Url;
+
+#[derive(Debug, Snafu)]
+enum BackupError {
+    #[snafu(display("cannot dump database: {reason}"))]
+    Dump { reason: String },
+    #[snafu(display("cannot restore database: {reason}"))]
+    Restore { reason: String },
+}
 
 #[derive(Debug, Subcommand, ConfigSubcommand)]
 pub(crate) enum DatabaseCommand {
@@ -39,16 +49,16 @@ pub(crate) struct BackupArgs {
 
 impl DatabaseCommand {
     pub(crate) async fn execute(self, database_url: Url) -> Result<(), Box<dyn Error>> {
-        let database = Database::connect(database_url).await?;
+        let database = Database::connect(database_url.clone()).await?;
 
         match self {
             Self::Setup => setup(&database).await,
             Self::Reset { confirm } => reset(&database, confirm).await,
             Self::Backup(args) => {
                 if let Some(output) = args.dump {
-                    dump(&database, &output, args.force).await
+                    dump(&database_url, &output, args.force).await
                 } else if let Some(input) = args.restore {
-                    restore(&database, &input).await
+                    restore(&database_url, &input).await
                 } else {
                     unreachable!()
                 }
@@ -84,15 +94,78 @@ async fn setup(database: &Database) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn dump(database: &Database, output: &Path, force: bool) -> Result<(), Box<dyn Error>> {
-    database.dump(output, force).await?;
+async fn dump(database_url: &Url, output: &Path, force: bool) -> Result<(), Box<dyn Error>> {
+    if output.exists() && !force {
+        return Err(BackupError::Dump {
+            reason: format!("target {} already exists", output.display()),
+        }
+        .into());
+    }
+
+    if let Some(parent) = output.parent()
+        && !parent.as_os_str().is_empty()
+        && !parent.is_dir()
+    {
+        return Err(BackupError::Dump {
+            reason: format!("directory {} does not exist", parent.display()),
+        }
+        .into());
+    }
+
+    let status = Command::new("pg_dump")
+        .arg("--format=custom")
+        .arg("--no-owner")
+        .arg("--no-privileges")
+        .arg("--file")
+        .arg(output)
+        .env("PGDATABASE", database_url.as_str())
+        .status()
+        .await
+        .map_err(|source| BackupError::Dump {
+            reason: source.to_string(),
+        })?;
+
+    if !status.success() {
+        return Err(BackupError::Dump {
+            reason: format!("operation failed with {status}"),
+        }
+        .into());
+    }
+
     println!("Backup created at {}", output.display());
 
     Ok(())
 }
 
-async fn restore(database: &Database, input: &Path) -> Result<(), Box<dyn Error>> {
-    database.restore(input).await?;
+async fn restore(database_url: &Url, input: &Path) -> Result<(), Box<dyn Error>> {
+    if !input.is_file() {
+        return Err(BackupError::Restore {
+            reason: format!("file {} does not exist", input.display()),
+        }
+        .into());
+    }
+
+    let status = Command::new("pg_restore")
+        .arg("--clean")
+        .arg("--if-exists")
+        .arg("--no-owner")
+        .arg("--no-privileges")
+        .arg("--dbname")
+        .arg(database_url.as_str())
+        .arg(input)
+        .status()
+        .await
+        .map_err(|source| BackupError::Restore {
+            reason: source.to_string(),
+        })?;
+
+    if !status.success() {
+        return Err(BackupError::Restore {
+            reason: format!("operation failed with {status}"),
+        }
+        .into());
+    }
+
     println!("Backup restored from {}", input.display());
 
     Ok(())

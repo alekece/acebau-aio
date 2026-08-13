@@ -1,8 +1,5 @@
-use std::path::Path;
-
 use snafu::{ResultExt, Snafu};
 use sqlx::{PgConnection, PgPool, Postgres, migrate::MigrateError, postgres::PgPoolOptions};
-use tokio::process::Command;
 use url::Url;
 
 use crate::{Repository, repository::RepositoryHandle};
@@ -21,10 +18,6 @@ pub enum DatabaseError {
     Migration { source: MigrateError },
     #[snafu(display("database operation failed: {source}"))]
     Internal { source: sqlx::Error },
-    #[snafu(display("cannot dump database: {reason}"))]
-    Dump { reason: String },
-    #[snafu(display("cannot restore database: {reason}"))]
-    Restore { reason: String },
 }
 
 pub type Transaction<'a> = DatabaseHandle<sqlx::Transaction<'a, Postgres>>;
@@ -39,7 +32,6 @@ pub trait Executor<'a> {
 #[derive(Debug, Clone)]
 pub struct DatabaseHandle<T> {
     executor: T,
-    url: Option<Url>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -66,7 +58,7 @@ impl MigrationOptions {
 
 impl<T> DatabaseHandle<T> {
     pub fn new(executor: T) -> Self {
-        Self { executor, url: None }
+        Self { executor }
     }
 }
 
@@ -87,84 +79,7 @@ impl Database {
             .await
             .context(ConnectionSnafu)?;
 
-        Ok(Self {
-            executor,
-            url: Some(url),
-        })
-    }
-
-    pub async fn dump(&self, output: &Path, force: bool) -> Result<(), DatabaseError> {
-        if output.exists() && !force {
-            return Err(DatabaseError::Dump {
-                reason: format!("target {} already exists", output.display()),
-            });
-        }
-
-        if let Some(parent) = output.parent()
-            && !parent.as_os_str().is_empty()
-            && !parent.is_dir()
-        {
-            return Err(DatabaseError::Dump {
-                reason: format!("directory {} does not exist", parent.display()),
-            });
-        }
-
-        let status = Command::new("pg_dump")
-            .arg("--format=custom")
-            .arg("--no-owner")
-            .arg("--no-privileges")
-            .arg("--file")
-            .arg(&output)
-            .env("PGDATABASE", self.url()?.as_str())
-            .status()
-            .await
-            .map_err(|source| DatabaseError::Dump {
-                reason: source.to_string(),
-            })?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err(DatabaseError::Dump {
-                reason: format!("operation failed with {status}"),
-            })
-        }
-    }
-
-    pub async fn restore(&self, input: &Path) -> Result<(), DatabaseError> {
-        if !input.is_file() {
-            return Err(DatabaseError::Restore {
-                reason: format!("file {} does not exist", input.display()),
-            });
-        }
-
-        let status = Command::new("pg_restore")
-            .arg("--clean")
-            .arg("--if-exists")
-            .arg("--no-owner")
-            .arg("--no-privileges")
-            .arg("--dbname")
-            .arg(self.url()?.as_str())
-            .arg(&input)
-            .status()
-            .await
-            .map_err(|source| DatabaseError::Restore {
-                reason: source.to_string(),
-            })?;
-
-        if status.success() {
-            Ok(())
-        } else {
-            Err(DatabaseError::Restore {
-                reason: format!("operation failed with {status}"),
-            })
-        }
-    }
-
-    fn url(&self) -> Result<&Url, DatabaseError> {
-        self.url.as_ref().ok_or_else(|| DatabaseError::Internal {
-            source: sqlx::Error::Configuration("database connection URL is unavailable".into()),
-        })
+        Ok(Self::new(executor))
     }
 
     /// Runs each migrator in slice order with the same migration options.
