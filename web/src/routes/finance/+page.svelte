@@ -3,7 +3,7 @@
 	import Button from '$lib/components/ui/Button.svelte';
 	import Kpi from '$lib/components/ui/Kpi.svelte';
 	import Badge from '$lib/components/ui/Badge.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
 	import { Tone } from '$lib/types';

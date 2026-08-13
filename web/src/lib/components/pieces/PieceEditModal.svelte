@@ -3,7 +3,7 @@
 	import { graphql } from '$lib/api/graphql';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 	import WandSparkles from '@lucide/svelte/icons/wand-sparkles';
 

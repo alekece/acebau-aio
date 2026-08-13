@@ -5,7 +5,7 @@
 	import { graphql } from '$lib/api/graphql';
 	import Button from '$lib/components/ui/Button.svelte';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 
 	type VariantTemplate = {
 		id: string;

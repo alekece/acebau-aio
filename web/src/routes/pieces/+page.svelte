@@ -13,7 +13,7 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import IconAction from '$lib/components/ui/IconAction.svelte';
 	import Kpi from '$lib/components/ui/Kpi.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
 	import OnboardingPanel from '$lib/components/ui/OnboardingPanel.svelte';
 	import PageShell from '$lib/components/ui/PageShell.svelte';

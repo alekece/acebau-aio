@@ -12,7 +12,7 @@
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import IconAction from '$lib/components/ui/IconAction.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import MachineStatus from '$lib/components/machines/MachineStatus.svelte';
 	import Kpi from '$lib/components/ui/Kpi.svelte';
@@ -21,8 +21,8 @@
 	import PageShell from '$lib/components/ui/PageShell.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
 	import TableSection from '$lib/components/ui/TableSection.svelte';
-	import MetricInput from '$lib/components/forms/MetricInput.svelte';
-	import RatioInput from '$lib/components/forms/RatioInput.svelte';
+	import MetricInput from '$lib/components/ui/forms/MetricInput.svelte';
+	import RatioInput from '$lib/components/ui/forms/RatioInput.svelte';
 	import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
 	import type { PageProps } from './$types';
 
@@ -482,6 +482,7 @@
 							<MetricInput
 								label="Prix d’achat"
 								required
+								requiredFeedback
 								bind:value={modelForm.purchaseCost}
 								unit="€"
 								units={priceUnits}
@@ -489,6 +490,7 @@
 							<RatioInput
 								label="Coût de maintenance"
 								required
+								requiredFeedback
 								bind:value={modelForm.maintenanceCostValue}
 								numeratorUnit="€"
 								bind:denominatorUnit={modelForm.maintenanceCostUnit}
@@ -498,6 +500,7 @@
 							<MetricInput
 								label="Durée de vie"
 								required
+								requiredFeedback
 								kind="time"
 								bind:value={modelForm.lifetimeValue}
 								bind:unit={modelForm.lifetimeUnit}
@@ -506,6 +509,7 @@
 							<MetricInput
 								label="Puissance moyenne"
 								required
+								requiredFeedback
 								kind="power"
 								bind:value={modelForm.averagePowerValue}
 								bind:unit={modelForm.averagePowerUnit}
@@ -800,12 +804,14 @@
 						><MetricInput
 							label="Prix d’achat"
 							required
+							requiredFeedback
 							bind:value={modelForm.purchaseCost}
 							unit="€"
 							units={priceUnits}
 						/><RatioInput
 							label="Coût de maintenance"
 							required
+							requiredFeedback
 							bind:value={modelForm.maintenanceCostValue}
 							numeratorUnit="€"
 							bind:denominatorUnit={modelForm.maintenanceCostUnit}
@@ -814,6 +820,7 @@
 						/><MetricInput
 							label="Durée de vie"
 							required
+							requiredFeedback
 							kind="time"
 							bind:value={modelForm.lifetimeValue}
 							bind:unit={modelForm.lifetimeUnit}
@@ -821,6 +828,7 @@
 						/><MetricInput
 							label="Puissance moyenne"
 							required
+							requiredFeedback
 							kind="power"
 							bind:value={modelForm.averagePowerValue}
 							bind:unit={modelForm.averagePowerUnit}

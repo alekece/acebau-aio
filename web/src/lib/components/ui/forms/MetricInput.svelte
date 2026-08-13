@@ -14,7 +14,8 @@
 		hint = '',
 		min = '0',
 		step = 'any',
-		required = false
+		required = false,
+		requiredFeedback = false
 	}: {
 		label: string;
 		value?: string;
@@ -26,6 +27,7 @@
 		min?: string | number;
 		step?: number | 'any';
 		required?: boolean;
+		requiredFeedback?: boolean;
 	} = $props();
 
 	const metricDefaults = getMetricDefaults();
@@ -68,34 +70,35 @@
 
 	function updateValue(event: Event) {
 		value = (event.currentTarget as HTMLInputElement).value;
-		touched = true;
 	}
 </script>
 
 <label class="label">
 	<span>{label}</span>
 	<div
-		class="grid grid-cols-[minmax(0,1fr)_auto] rounded-base shadow-sm focus-within:ring-2 focus-within:ring-tertiary-500/20"
+		class={`grid grid-cols-[minmax(0,1fr)_auto] rounded-base shadow-sm focus-within:ring-2 ${touched && validationMessage ? 'ring-2 ring-error-500 focus-within:ring-error-500/30' : 'focus-within:ring-tertiary-500/20'}`}
 	>
 		<input
 			bind:this={inputElement}
-			class="input min-h-[42px] !rounded-r-none border border-surface-300-700 bg-surface-50-950 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:border-tertiary-500 focus:ring-0"
+			class={`input min-h-[42px] !rounded-r-none border bg-surface-50-950 px-3 py-2 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
 			type="text"
 			inputmode="decimal"
-			aria-invalid={validationMessage ? 'true' : undefined}
+			aria-invalid={touched && validationMessage ? 'true' : undefined}
+			data-required-feedback={required && requiredFeedback ? true : undefined}
 			{required}
 			value={value}
 			oninput={updateValue}
+			onfocus={() => (touched = false)}
 			onblur={() => (touched = true)}
 		/>
 		{#if units.length === 1}
 			<span
-				class="grid min-h-[42px] min-w-12 place-items-center !rounded-l-none rounded-r-base border !border-l-0 border-surface-300-700 bg-surface-100-900 px-2.5 py-2 font-medium text-surface-950-50"
+				class={`grid min-h-[42px] min-w-12 place-items-center !rounded-l-none rounded-r-base border !border-l-0 bg-surface-100-900 px-2.5 py-2 font-medium text-surface-950-50 ${touched && validationMessage ? 'border-error-500' : 'border-surface-300-700'}`}
 				aria-label={`Unité pour ${label}`}>{units[0].label}</span
 			>
 		{:else}
 			<select
-				class="select min-h-[42px] min-w-20 !rounded-l-none border !border-l-0 border-surface-300-700 bg-surface-100-900 py-2 pr-8 pl-2.5 font-medium text-surface-950-50 shadow-none focus:z-10 focus:border-tertiary-500 focus:ring-0"
+				class={`select min-h-[42px] min-w-20 !rounded-l-none border !border-l-0 bg-surface-100-900 py-2 pr-8 pl-2.5 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
 				aria-label={`Unité pour ${label}`}
 				value={resolvedUnit}
 				onchange={updateUnit}

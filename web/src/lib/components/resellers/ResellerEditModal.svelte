@@ -2,7 +2,7 @@
 	import { invalidateAll } from '$app/navigation';
 	import { graphql } from '$lib/api/graphql';
 	import FormModal from '$lib/components/ui/FormModal.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 
 	let { open = false, onClose }: { open?: boolean; onClose: () => void } = $props();
 	let businessName = $state('');

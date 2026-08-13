@@ -20,7 +20,7 @@
 	} from '$lib/production/types';
 	import Badge from '$lib/components/ui/Badge.svelte';
 	import IconAction from '$lib/components/ui/IconAction.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 
 	type JobForm = {
 		pieceId: string;

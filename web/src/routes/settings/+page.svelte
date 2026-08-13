@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { invalidateAll } from '$app/navigation';
 	import { graphql } from '$lib/api/graphql';
-	import MetricInput from '$lib/components/forms/MetricInput.svelte';
+	import MetricInput from '$lib/components/ui/forms/MetricInput.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
-	import Input from '$lib/components/ui/Input.svelte';
+	import Input from '$lib/components/ui/forms/Input.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
 	import type { PageProps } from './$types';
 

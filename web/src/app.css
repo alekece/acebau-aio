@@ -466,6 +466,25 @@ a:focus-visible {
 	font-size: 0.88rem;
 	font-weight: 650;
 }
+
+/* Required feedback is opt-in so forms whose fields are all mandatory stay visually quiet. */
+label.label:has([data-required-feedback]) {
+	position: relative;
+}
+
+label.label:has([data-required-feedback])::after {
+	position: absolute;
+	top: 0;
+	right: 0;
+	padding: 0.1rem 0.45rem;
+	border-radius: 9999px;
+	color: var(--color-surface-600, #64748b);
+	background: color-mix(in oklab, var(--color-surface-500, #64748b) 10%, transparent);
+	font-size: 0.68rem;
+	font-weight: 600;
+	line-height: 1.2;
+	content: 'Requis';
+}
 .form-panel input,
 .form-panel select,
 .form-panel textarea {
