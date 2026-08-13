@@ -1,9 +1,9 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type InventoryResult = {
-	supplies: {
+	supplies: Page<{
 		id: string;
 		name: string;
 		reference: string;
@@ -12,18 +12,18 @@ type InventoryResult = {
 		availableQuantity: number;
 		lowStockThreshold: number;
 		targetQuantity: number;
-	}[];
-	filamentSpools: {
+	}>;
+	filamentSpools: Page<{
 		supplyId: string;
 		internalReference: string;
 		remainingWeight: string;
 		receivedCost: string;
 		state: string;
-	}[];
+	}>;
 };
 
 const fallback: InventoryResult = {
-	supplies: [
+	supplies: emptyPage([
 		{
 			id: 'demo-1',
 			name: 'PLA blanc mat',
@@ -54,8 +54,8 @@ const fallback: InventoryResult = {
 			lowStockThreshold: 20,
 			targetQuantity: 60
 		}
-	],
-	filamentSpools: [
+	]),
+	filamentSpools: emptyPage([
 		{
 			supplyId: 'demo-1',
 			internalReference: 'BOB-024',
@@ -77,26 +77,30 @@ const fallback: InventoryResult = {
 			receivedCost: '22€',
 			state: 'open'
 		}
-	]
+	])
 };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
+export const load: PageLoad = async ({ fetch, parent, url }) => {
 	const { defaultPageSize } = await parent();
+	const page = Number(url.searchParams.get('page') ?? 1);
 	const result = await graphqlOrFallback<InventoryResult>(
 		fetch,
-		`query InventoryPage($pageSize: Int!) {
-		supplies(pageSize: $pageSize) { id name reference kind baseUnit availableQuantity lowStockThreshold targetQuantity }
-		filamentSpools(pageSize: $pageSize) { supplyId internalReference remainingWeight receivedCost state }
+		`query InventoryPage($page: Int!, $pageSize: Int!) {
+		supplies(page: $page, pageSize: $pageSize) {
+			items { id name reference kind baseUnit availableQuantity lowStockThreshold targetQuantity }
+			page pageSize totalItems totalPages
+		}
+		filamentSpools(pageSize: 100) { items { supplyId internalReference remainingWeight receivedCost state } }
 	}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page, pageSize: defaultPageSize }
 	);
 	const category: Record<string, string> = {
 		production_material: 'Matériau de production',
 		product_packaging: 'Emballage produit',
 		shipping_packaging: 'Emballage expédition'
 	};
-	const filaments = result.value.supplies
+	const filaments = result.value.supplies.items
 		.filter((supply) => supply.kind === 'filament')
 		.map((supply) => ({
 			id: supply.id,
@@ -107,12 +111,13 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 			availableQuantity: supply.availableQuantity,
 			lowStockThreshold: supply.lowStockThreshold,
 			targetQuantity: supply.targetQuantity,
-			spools: result.value.filamentSpools.filter((spool) => spool.supplyId === supply.id).length,
+			spools: result.value.filamentSpools.items.filter((spool) => spool.supplyId === supply.id)
+				.length,
 			available: `${supply.availableQuantity} ${supply.baseUnit}`,
 			reorder: `${supply.lowStockThreshold} ${supply.baseUnit}`,
 			state: supply.availableQuantity <= supply.lowStockThreshold ? 'Alerte sous' : 'À jour',
 			tone: supply.availableQuantity <= supply.lowStockThreshold ? Tone.Warning : Tone.Success,
-			details: result.value.filamentSpools
+			details: result.value.filamentSpools.items
 				.filter((spool) => spool.supplyId === supply.id)
 				.map((spool) => ({
 					ref: spool.internalReference,
@@ -123,7 +128,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 						spool.state === 'open' ? 'Ouverte' : spool.state === 'sealed' ? 'Scellée' : spool.state
 				}))
 		}));
-	const materials = result.value.supplies
+	const materials = result.value.supplies.items
 		.filter((supply) => supply.kind !== 'filament')
 		.map((supply) => ({
 			id: supply.id,
@@ -147,7 +152,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 		filaments,
 		materials,
 		kpis: {
-			belowThreshold: result.value.supplies.filter(
+			belowThreshold: result.value.supplies.items.filter(
 				(supply) => supply.availableQuantity <= supply.lowStockThreshold
 			).length,
 			productionBlocked: 0,
@@ -155,7 +160,8 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 			estimatedValue: '—',
 			defectiveProducts: 0
 		},
-		supplyTemplates: result.value.supplies,
+		supplyTemplates: result.value.supplies.items,
+		pagination: result.value.supplies,
 		// Finished-stock, movement and count modules are not persisted yet; temporary page data stays in the loader.
 		products: [
 			{

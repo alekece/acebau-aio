@@ -1,20 +1,25 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import type { PageLoad } from './$types';
 
 type FinanceResult = {
-	expenses: { accountingDate: string; totalHt: string; totalVat: string; totalTtc: string }[];
-	importedInvoices: { issuedOn: string; totalHt: string; totalVat: string; paymentState: string }[];
+	expenses: Page<{ accountingDate: string; totalHt: string; totalVat: string; totalTtc: string }>;
+	importedInvoices: Page<{
+		issuedOn: string;
+		totalHt: string;
+		totalVat: string;
+		paymentState: string;
+	}>;
 };
 
-const fallback: FinanceResult = { expenses: [], importedInvoices: [] };
+const fallback: FinanceResult = { expenses: emptyPage(), importedInvoices: emptyPage() };
 
 export const load: PageLoad = async ({ fetch, parent }) => {
 	const { defaultPageSize } = await parent();
 	const result = await graphqlOrFallback<FinanceResult>(
 		fetch,
 		`query FinancePage($pageSize: Int!) {
-		expenses(pageSize: $pageSize) { accountingDate totalHt totalVat totalTtc }
-		importedInvoices(pageSize: $pageSize) { issuedOn totalHt totalVat paymentState }
+		expenses(pageSize: $pageSize) { items { accountingDate totalHt totalVat totalTtc } }
+		importedInvoices(pageSize: $pageSize) { items { issuedOn totalHt totalVat paymentState } }
 	}`,
 		fallback,
 		{ pageSize: defaultPageSize }
@@ -22,9 +27,9 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 
 	return {
 		recordCounts: {
-			expenses: result.value.expenses.length,
-			invoices: result.value.importedInvoices.length,
-			unpaidInvoices: result.value.importedInvoices.filter(
+			expenses: result.value.expenses.totalItems,
+			invoices: result.value.importedInvoices.totalItems,
+			unpaidInvoices: result.value.importedInvoices.items.filter(
 				(invoice) => invoice.paymentState === 'unpaid'
 			).length
 		},

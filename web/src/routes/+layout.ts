@@ -1,15 +1,15 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import { FALLBACK_METRIC_DEFAULTS } from '$lib/settings/metric-defaults';
 import type { LayoutLoad } from './$types';
 
 type SettingsResult = {
-	applicationSettings: {
+	applicationSettings: Page<{
 		defaultTimeUnit: string;
 		defaultMassUnit: string;
 		defaultLengthUnit: string;
 		defaultPowerUnit: string;
 		defaultPageSize: number;
-	}[];
+	}>;
 };
 
 export const load: LayoutLoad = async ({ fetch }) => {
@@ -17,11 +17,11 @@ export const load: LayoutLoad = async ({ fetch }) => {
 		fetch,
 		`query LayoutSettings {
 			applicationSettings {
-				defaultTimeUnit defaultMassUnit defaultLengthUnit defaultPowerUnit defaultPageSize
+				items { defaultTimeUnit defaultMassUnit defaultLengthUnit defaultPowerUnit defaultPageSize }
 			}
 		}`,
 		{
-			applicationSettings: [
+			applicationSettings: emptyPage([
 				{
 					defaultTimeUnit: FALLBACK_METRIC_DEFAULTS.time,
 					defaultMassUnit: FALLBACK_METRIC_DEFAULTS.mass,
@@ -29,10 +29,10 @@ export const load: LayoutLoad = async ({ fetch }) => {
 					defaultPowerUnit: FALLBACK_METRIC_DEFAULTS.power,
 					defaultPageSize: 10
 				}
-			]
+			])
 		}
 	);
-	const settings = result.value.applicationSettings[0];
+	const settings = result.value.applicationSettings.items[0];
 
 	return {
 		metricDefaults: settings

@@ -1,9 +1,9 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type OrdersResult = {
-	customerOrders: {
+	customerOrders: Page<{
 		id: string;
 		reference: string;
 		customerName: string;
@@ -12,11 +12,11 @@ type OrdersResult = {
 		requestedOn: string;
 		totalHt: string;
 		progressSummary: string;
-	}[];
+	}>;
 };
 
 const fallback: OrdersResult = {
-	customerOrders: [
+	customerOrders: emptyPage([
 		{
 			id: 'demo-1',
 			reference: 'CMD-1044',
@@ -47,7 +47,7 @@ const fallback: OrdersResult = {
 			totalHt: '420 €',
 			progressSummary: 'Colis à préparer'
 		}
-	]
+	])
 };
 
 const stateLabels: Record<string, string> = {
@@ -67,15 +67,19 @@ const sourceLabels: Record<string, string> = {
 	etsy: 'Etsy'
 };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
+export const load: PageLoad = async ({ fetch, parent, url }) => {
 	const { defaultPageSize } = await parent();
+	const page = Number(url.searchParams.get('page') ?? 1);
 	const result = await graphqlOrFallback<OrdersResult>(
 		fetch,
-		`query OrdersPage($pageSize: Int!) {
-		customerOrders(pageSize: $pageSize) { id reference customerName source state requestedOn totalHt progressSummary }
+		`query OrdersPage($page: Int!, $pageSize: Int!) {
+		customerOrders(page: $page, pageSize: $pageSize) {
+			items { id reference customerName source state requestedOn totalHt progressSummary }
+			page pageSize totalItems totalPages
+		}
 	}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page, pageSize: defaultPageSize }
 	);
 	const tone = (state: string) =>
 		state === 'pending'
@@ -95,7 +99,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 					: 'Ouvrir';
 
 	return {
-		orders: result.value.customerOrders.map((order) => ({
+		orders: result.value.customerOrders.items.map((order) => ({
 			recordId: order.id,
 			id: order.reference,
 			customer: order.customerName,
@@ -111,10 +115,11 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 		lifecycle: ['pending', 'accepted', 'in_production', 'ready_to_ship', 'awaiting_payment'].map(
 			(state) => ({
 				label: stateLabels[state],
-				count: result.value.customerOrders.filter((order) => order.state === state).length,
+				count: result.value.customerOrders.items.filter((order) => order.state === state).length,
 				tone: tone(state)
 			})
 		),
+		pagination: result.value.customerOrders,
 		usingFallback: result.usingFallback,
 		loadError: result.error
 	};

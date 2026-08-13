@@ -42,6 +42,11 @@
 			<Button variant="outlined" tone="surface"><FileUp size={16} />Ouvrir un PDF</Button>
 		</div>
 		<Table
+			responsiveCards
+			page={data.pagination.page}
+			pageSize={data.pagination.pageSize}
+			totalItems={data.pagination.totalItems}
+			totalPages={data.pagination.totalPages}
 			><thead
 				><tr
 					><th>Facture</th><th>Client</th><th>Activité</th><th>Émise le</th><th>Échéance</th><th

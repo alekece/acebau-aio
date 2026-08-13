@@ -1,4 +1,4 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
@@ -19,10 +19,10 @@ type VariantRecord = {
 	retailPrice: string;
 	status: string;
 };
-type CatalogueResult = { products: ProductRecord[]; variants: VariantRecord[] };
+type CatalogueResult = { products: Page<ProductRecord>; variants: Page<VariantRecord> };
 
 const fallback: CatalogueResult = {
-	products: [
+	products: emptyPage([
 		{
 			id: 'demo-ondra',
 			status: 'active',
@@ -50,8 +50,8 @@ const fallback: CatalogueResult = {
 			shortDescription: '',
 			customizable: false
 		}
-	],
-	variants: [
+	]),
+	variants: emptyPage([
 		{
 			id: 'demo-ondra-s',
 			productId: 'demo-ondra',
@@ -92,24 +92,30 @@ const fallback: CatalogueResult = {
 			retailPrice: '82 €',
 			status: 'active'
 		}
-	]
+	])
 };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
+export const load: PageLoad = async ({ fetch, parent, url }) => {
 	const { defaultPageSize } = await parent();
+	const page = Number(url.searchParams.get('page') ?? 1);
 	const result = await graphqlOrFallback<CatalogueResult>(
 		fetch,
-		`query CataloguePage($pageSize: Int!) {
-		products(pageSize: $pageSize) { id status name collection category shortDescription customizable }
-		variants(pageSize: $pageSize) { id productId displayName sku retailPrice status }
+		`query CataloguePage($page: Int!, $pageSize: Int!) {
+		products(page: $page, pageSize: $pageSize) {
+			items { id status name collection category shortDescription customizable }
+			page pageSize totalItems totalPages
+		}
+		variants(pageSize: 100) { items { id productId displayName sku retailPrice status } }
 	}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page, pageSize: defaultPageSize }
 	);
 
 	return {
-		products: result.value.products.map((product) => {
-			const variants = result.value.variants.filter((variant) => variant.productId === product.id);
+		products: result.value.products.items.map((product) => {
+			const variants = result.value.variants.items.filter(
+				(variant) => variant.productId === product.id
+			);
 			return {
 				id: product.id,
 				name: product.name,
@@ -141,10 +147,13 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 			};
 		}),
 		kpis: {
-			activeProducts: result.value.products.filter((product) => product.status === 'active').length,
-			activeVariants: result.value.variants.filter((variant) => variant.status === 'active').length,
+			activeProducts: result.value.products.items.filter((product) => product.status === 'active')
+				.length,
+			activeVariants: result.value.variants.items.filter((variant) => variant.status === 'active')
+				.length,
 			belowMargin: 0
 		},
+		pagination: result.value.products,
 		marginChannels: [
 			{ label: 'Revendeur', target: '40 %', count: 0, tone: Tone.Warning },
 			{ label: 'Site', target: '60 %', count: 0, tone: Tone.Warning },

@@ -280,7 +280,13 @@
 						</p>
 					</div>
 				</div>
-				<Table responsiveCards>
+				<Table
+					responsiveCards
+					page={data.pagination.page}
+					pageSize={data.pagination.pageSize}
+					totalItems={data.pagination.totalItems}
+					totalPages={data.pagination.totalPages}
+				>
 					<thead
 						><tr
 							><th>Filament</th><th>Bobines</th><th>Quantité disponible</th><th>Alerte sous</th><th
@@ -398,7 +404,12 @@
 						</p>
 					</div>
 				</div>
-				<Table responsiveCards
+				<Table
+					responsiveCards
+					page={data.pagination.page}
+					pageSize={data.pagination.pageSize}
+					totalItems={data.pagination.totalItems}
+					totalPages={data.pagination.totalPages}
 					><thead
 						><tr
 							><th>Article</th><th>Catégorie</th><th>Unité</th><th>Quantité</th><th>Alerte sous</th

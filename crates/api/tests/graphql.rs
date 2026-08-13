@@ -64,7 +64,7 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
     let machine_type = graphql(
         &http,
         &endpoint,
-        "query { __type(name: \"Machine\") { fields { name } } }",
+        "query { __type(name: \"MachineRecord\") { fields { name } } }",
         json!({}),
     )
     .await;
@@ -130,8 +130,14 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
     .await;
     assert_eq!(deleted["deleteMachineModel"], true);
 
-    let listed = graphql(&http, &endpoint, "query { machineModels { id name } }", json!({})).await;
-    let models = listed["machineModels"]
+    let listed = graphql(
+        &http,
+        &endpoint,
+        "query { machineModels { items { id name } } }",
+        json!({}),
+    )
+    .await;
+    let models = listed["machineModels"]["items"]
         .as_array()
         .expect("machine models should be a list");
     assert!(models.iter().any(|model| model["id"] == first["id"]));
@@ -297,53 +303,52 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
         &http,
         &endpoint,
         r#"query {
-            products(page: 1, pageSize: 25) { id name }
-            supplies(page: 1, pageSize: 25) { id reference }
+            products(page: 1, pageSize: 25) { items { id name } }
+            supplies(page: 1, pageSize: 25) { items { id reference } }
             productionTaskLines(page: 1, pageSize: 25) {
-                id productionTaskId pieceId filamentSupplyId quantity machineId state startedAt
+                items { id productionTaskId pieceId filamentSupplyId quantity machineId state startedAt }
             }
-            machines(page: 1, pageSize: 25) { id surname }
-            machinesPage(page: 1, pageSize: 25) {
+            machines(page: 1, pageSize: 25) {
                 items { id surname }
                 page pageSize totalItems totalPages
             }
-            applicationSettings { defaultTimeUnit defaultMassUnit defaultPageSize }
+            applicationSettings { items { defaultTimeUnit defaultMassUnit defaultPageSize } }
             operationalOverview { activeProducts activeVariants openOrders pendingProductions }
         }"#,
         json!({}),
     )
     .await;
     assert!(
-        listed["products"]
+        listed["products"]["items"]
             .as_array()
             .expect("products should be a list")
             .iter()
             .any(|product| product["name"] == unique_name)
     );
-    assert_eq!(listed["applicationSettings"][0]["defaultPageSize"], 10);
-    assert_eq!(listed["machinesPage"]["page"], 1);
-    assert_eq!(listed["machinesPage"]["pageSize"], 25);
+    assert_eq!(listed["applicationSettings"]["items"][0]["defaultPageSize"], 10);
+    assert_eq!(listed["machines"]["page"], 1);
+    assert_eq!(listed["machines"]["pageSize"], 25);
     assert!(
-        listed["machinesPage"]["totalItems"]
+        listed["machines"]["totalItems"]
             .as_i64()
             .is_some_and(|count| count >= 1)
     );
     assert!(
-        listed["supplies"]
+        listed["supplies"]["items"]
             .as_array()
             .is_some_and(|supplies| !supplies.is_empty())
     );
     assert!(
-        listed["productionTaskLines"]
+        listed["productionTaskLines"]["items"]
             .as_array()
             .expect("production lines should be a list")
             .iter()
             .any(|line| line["productionTaskId"] == production["createProduction"]["id"] && line["quantity"] == 4)
     );
-    assert!(listed["machines"].is_array());
+    assert!(listed["machines"]["items"].is_array());
     assert!(listed["operationalOverview"]["activeProducts"].as_i64().unwrap() >= 1);
 
-    let line = listed["productionTaskLines"]
+    let line = listed["productionTaskLines"]["items"]
         .as_array()
         .expect("production lines should be a list")
         .iter()
@@ -395,12 +400,12 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
     let completed_task = graphql(
         &http,
         &endpoint,
-        r#"query { productionTasks(pageSize: 25) { id state } }"#,
+        r#"query { productionTasks(pageSize: 25) { items { id state } } }"#,
         json!({}),
     )
     .await;
     assert!(
-        completed_task["productionTasks"]
+        completed_task["productionTasks"]["items"]
             .as_array()
             .expect("production tasks should be a list")
             .iter()
@@ -409,7 +414,7 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
 
     let invalid_page = http
         .post(&endpoint)
-        .json(&json!({"query": "query { products(pageSize: 12) { id } }"}))
+        .json(&json!({"query": "query { products(pageSize: 12) { items { id } } }"}))
         .send()
         .await
         .expect("GraphQL request should succeed")

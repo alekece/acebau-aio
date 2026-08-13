@@ -176,7 +176,12 @@
 					/><Input bind:value={query} placeholder="Rechercher un produit" class="pl-9" /></label
 				>
 			{/snippet}
-			<Table responsiveCards
+			<Table
+				responsiveCards
+				page={data.pagination.page}
+				pageSize={data.pagination.pageSize}
+				totalItems={data.pagination.totalItems}
+				totalPages={data.pagination.totalPages}
 				><thead
 					><tr
 						><th></th><th>Produit</th><th>Variantes</th><th>Prix</th><th>Ventes</th><th>État</th><th

@@ -1,9 +1,9 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type ResellerResult = {
-	resellers: {
+	resellers: Page<{
 		id: string;
 		status: string;
 		businessName: string;
@@ -12,11 +12,11 @@ type ResellerResult = {
 		relationship: string;
 		nextActionDate: string | null;
 		nextAction: string;
-	}[];
+	}>;
 };
 
 const fallback: ResellerResult = {
-	resellers: [
+	resellers: emptyPage([
 		{
 			id: 'demo-1',
 			status: 'active',
@@ -47,18 +47,22 @@ const fallback: ResellerResult = {
 			nextActionDate: '2026-08-18',
 			nextAction: 'Contacter'
 		}
-	]
+	])
 };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
+export const load: PageLoad = async ({ fetch, parent, url }) => {
 	const { defaultPageSize } = await parent();
+	const page = Number(url.searchParams.get('page') ?? 1);
 	const result = await graphqlOrFallback<ResellerResult>(
 		fetch,
-		`query ResellersPage($pageSize: Int!) {
-		resellers(pageSize: $pageSize) { id status businessName city country relationship nextActionDate nextAction }
+		`query ResellersPage($page: Int!, $pageSize: Int!) {
+		resellers(page: $page, pageSize: $pageSize) {
+			items { id status businessName city country relationship nextActionDate nextAction }
+			page pageSize totalItems totalPages
+		}
 	}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page, pageSize: defaultPageSize }
 	);
 	const label = {
 		approved: 'Approuvé',
@@ -69,7 +73,7 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 	} as Record<string, string>;
 
 	return {
-		resellers: result.value.resellers.map((reseller) => ({
+		resellers: result.value.resellers.items.map((reseller) => ({
 			id: reseller.id,
 			name: reseller.businessName,
 			city: `${reseller.city} · ${reseller.country}`,
@@ -88,12 +92,14 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 				: 'Aucune action datée'
 		})),
 		kpis: {
-			active: result.value.resellers.filter((reseller) => reseller.relationship === 'approved')
-				.length,
+			active: result.value.resellers.items.filter(
+				(reseller) => reseller.relationship === 'approved'
+			).length,
 			turnover: '—',
 			orders: '—',
 			averageOrder: '—'
 		},
+		pagination: result.value.resellers,
 		usingFallback: result.usingFallback,
 		loadError: result.error
 	};

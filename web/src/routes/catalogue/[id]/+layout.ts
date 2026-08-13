@@ -1,4 +1,4 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import type { LayoutLoad } from './$types';
 
 type CatalogueDetailResult = {
@@ -11,7 +11,7 @@ type CatalogueDetailResult = {
 		shortDescription: string;
 		customizable: boolean;
 	};
-	variants: {
+	variants: Page<{
 		id: string;
 		productId: string;
 		status: string;
@@ -19,7 +19,7 @@ type CatalogueDetailResult = {
 		sku: string;
 		retailPrice: string;
 		resellerPrice: string;
-	}[];
+	}>;
 };
 
 export const load: LayoutLoad = async ({ fetch, params, parent }) => {
@@ -34,7 +34,7 @@ export const load: LayoutLoad = async ({ fetch, params, parent }) => {
 			shortDescription: 'La fiche complète sera synchronisée lorsque l’API sera disponible.',
 			customizable: true
 		},
-		variants: [
+		variants: emptyPage([
 			{
 				id: 'demo-variant',
 				productId: params.id,
@@ -44,13 +44,13 @@ export const load: LayoutLoad = async ({ fetch, params, parent }) => {
 				retailPrice: '89 €',
 				resellerPrice: '42 €'
 			}
-		]
+		])
 	};
 	const result = await graphqlOrFallback<CatalogueDetailResult>(
 		fetch,
 		`query CatalogueDetail($id: String!, $pageSize: Int!) {
 			product(id: $id) { id status name collection category shortDescription customizable }
-			variants(pageSize: $pageSize) { id productId status displayName sku retailPrice resellerPrice }
+			variants(pageSize: $pageSize) { items { id productId status displayName sku retailPrice resellerPrice } }
 		}`,
 		fallback,
 		{ id: params.id, pageSize: defaultPageSize }
@@ -58,7 +58,7 @@ export const load: LayoutLoad = async ({ fetch, params, parent }) => {
 
 	return {
 		product: result.value.product,
-		variants: result.value.variants.filter((variant) => variant.productId === params.id),
+		variants: result.value.variants.items.filter((variant) => variant.productId === params.id),
 		usingFallback: result.usingFallback,
 		loadError: result.error
 	};

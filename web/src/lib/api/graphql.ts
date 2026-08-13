@@ -1,5 +1,23 @@
 export type GraphqlFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
+export type Page<T> = {
+	items: T[];
+	page: number;
+	pageSize: number;
+	totalItems: number;
+	totalPages: number;
+};
+
+export function emptyPage<T>(items: T[] = [], pageSize = 10): Page<T> {
+	return {
+		items,
+		page: 1,
+		pageSize,
+		totalItems: items.length,
+		totalPages: items.length > 0 ? 1 : 0
+	};
+}
+
 type GraphqlResponse<T> = {
 	data?: T;
 	errors?: { message: string }[];

@@ -1,4 +1,4 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import type { PageLoad } from './$types';
 
 type OrderDetailResult = {
@@ -12,14 +12,14 @@ type OrderDetailResult = {
 		totalHt: string;
 		progressSummary: string;
 	};
-	orderLines: {
+	orderLines: Page<{
 		id: string;
 		orderId: string;
 		variantId: string;
 		quantity: number;
 		unitPriceHt: string;
-	}[];
-	variants: { id: string; displayName: string; sku: string }[];
+	}>;
+	variants: Page<{ id: string; displayName: string; sku: string }>;
 };
 
 export const load: PageLoad = async ({ fetch, params, parent }) => {
@@ -35,15 +35,15 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
 			totalHt: '842 €',
 			progressSummary: 'En attente de décision'
 		},
-		orderLines: [],
-		variants: []
+		orderLines: emptyPage(),
+		variants: emptyPage()
 	};
 	const result = await graphqlOrFallback<OrderDetailResult>(
 		fetch,
 		`query OrderDetail($id: String!, $pageSize: Int!) {
 			customerOrder(id: $id) { id reference customerName source state requestedOn totalHt progressSummary }
-			orderLines(pageSize: $pageSize) { id orderId variantId quantity unitPriceHt }
-			variants(pageSize: $pageSize) { id displayName sku }
+			orderLines(pageSize: $pageSize) { items { id orderId variantId quantity unitPriceHt } }
+			variants(pageSize: $pageSize) { items { id displayName sku } }
 		}`,
 		fallback,
 		{ id: params.id, pageSize: defaultPageSize }
@@ -51,11 +51,11 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
 
 	return {
 		order: result.value.customerOrder,
-		lines: result.value.orderLines
+		lines: result.value.orderLines.items
 			.filter((line) => line.orderId === params.id)
 			.map((line) => ({
 				...line,
-				variant: result.value.variants.find((variant) => variant.id === line.variantId)
+				variant: result.value.variants.items.find((variant) => variant.id === line.variantId)
 			})),
 		usingFallback: result.usingFallback,
 		loadError: result.error

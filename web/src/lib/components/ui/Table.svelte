@@ -1,6 +1,7 @@
 <script lang="ts">
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
+	import { goto } from '$app/navigation';
 	import type { Snippet } from 'svelte';
 
 	let {
@@ -33,11 +34,18 @@
 		page !== undefined &&
 			pageSize !== undefined &&
 			totalItems !== undefined &&
-			totalPages !== undefined &&
-			onPageChange !== undefined
+			totalPages !== undefined
 	);
 	let firstItem = $derived(totalItems === 0 ? 0 : ((page ?? 1) - 1) * (pageSize ?? 0) + 1);
 	let lastItem = $derived(Math.min((page ?? 1) * (pageSize ?? 0), totalItems ?? 0));
+
+	async function changePage(nextPage: number) {
+		if (onPageChange) return onPageChange(nextPage);
+
+		const url = new URL(window.location.href);
+		url.searchParams.set('page', String(nextPage));
+		await goto(`${url.pathname}${url.search}`, { keepFocus: true, noScroll: true });
+	}
 </script>
 
 <div class="table-component" aria-busy={loading}>
@@ -82,7 +90,7 @@
 						type="button"
 						disabled={loading || page === 1}
 						aria-label="Page précédente"
-						onclick={() => onPageChange?.((page ?? 1) - 1)}
+						onclick={() => changePage((page ?? 1) - 1)}
 					>
 						<ChevronLeft size={16} />
 					</button>
@@ -94,7 +102,7 @@
 						type="button"
 						disabled={loading || page === totalPages}
 						aria-label="Page suivante"
-						onclick={() => onPageChange?.((page ?? 1) + 1)}
+						onclick={() => changePage((page ?? 1) + 1)}
 					>
 						<ChevronRight size={16} />
 					</button>

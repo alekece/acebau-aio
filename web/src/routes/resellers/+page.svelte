@@ -50,6 +50,11 @@
 			<Users size={20} class="text-tertiary-500" />
 		</div>
 		<Table
+			responsiveCards
+			page={data.pagination.page}
+			pageSize={data.pagination.pageSize}
+			totalItems={data.pagination.totalItems}
+			totalPages={data.pagination.totalPages}
 			><thead
 				><tr
 					><th>Revendeur</th><th>Relation</th><th>Activité</th><th>CA HT</th><th

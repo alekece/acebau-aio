@@ -141,7 +141,12 @@
 					/><Input bind:value={query} placeholder="Rechercher une pièce" class="pl-9" /></label
 				>
 			{/snippet}
-			<Table responsiveCards
+			<Table
+				responsiveCards
+				page={data.pagination.page}
+				pageSize={data.pagination.pageSize}
+				totalItems={data.pagination.totalItems}
+				totalPages={data.pagination.totalPages}
 				><thead
 					><tr
 						><th>Pièce</th><th>Profils machines</th><th>Temps de référence</th><th>Consommation</th

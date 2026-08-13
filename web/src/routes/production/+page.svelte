@@ -81,7 +81,13 @@
 								>Créer une production</Button
 							>{/snippet}
 					</EmptyState>
-				{:else}<Table responsiveCards>
+				{:else}<Table
+						responsiveCards
+						page={data.pagination.page}
+						pageSize={data.pagination.pageSize}
+						totalItems={data.pagination.totalItems}
+						totalPages={data.pagination.totalPages}
+					>
 						<thead
 							><tr
 								><th></th><th>Opération</th><th>État</th><th>Progression</th><th>Promesse</th><th

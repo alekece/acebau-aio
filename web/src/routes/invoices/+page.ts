@@ -1,9 +1,9 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type InvoiceResult = {
-	importedInvoices: {
+	importedInvoices: Page<{
 		id: string;
 		number: string;
 		customer: string;
@@ -13,11 +13,11 @@ type InvoiceResult = {
 		dueOn: string;
 		totalTtc: string;
 		paymentState: string;
-	}[];
+	}>;
 };
 
 const fallback: InvoiceResult = {
-	importedInvoices: [
+	importedInvoices: emptyPage([
 		{
 			id: 'demo-1',
 			number: 'A-2026-034',
@@ -51,21 +51,25 @@ const fallback: InvoiceResult = {
 			totalTtc: '3 120 €',
 			paymentState: 'paid'
 		}
-	]
+	])
 };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
+export const load: PageLoad = async ({ fetch, parent, url }) => {
 	const { defaultPageSize } = await parent();
+	const page = Number(url.searchParams.get('page') ?? 1);
 	const result = await graphqlOrFallback<InvoiceResult>(
 		fetch,
-		`query InvoicesPage($pageSize: Int!) {
-		importedInvoices(pageSize: $pageSize) { id number customer activityId orderId issuedOn dueOn totalTtc paymentState }
+		`query InvoicesPage($page: Int!, $pageSize: Int!) {
+		importedInvoices(page: $page, pageSize: $pageSize) {
+			items { id number customer activityId orderId issuedOn dueOn totalTtc paymentState }
+			page pageSize totalItems totalPages
+		}
 	}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page, pageSize: defaultPageSize }
 	);
 	const today = new Date().toISOString().slice(0, 10);
-	const invoices = result.value.importedInvoices.map((invoice) => {
+	const invoices = result.value.importedInvoices.items.map((invoice) => {
 		const overdue = invoice.paymentState === 'unpaid' && invoice.dueOn < today;
 		return {
 			id: invoice.id,
@@ -83,12 +87,14 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 
 	return {
 		invoices,
+		pagination: result.value.importedInvoices,
 		kpis: {
-			unlinked: result.value.importedInvoices.filter(
+			unlinked: result.value.importedInvoices.items.filter(
 				(invoice) => !invoice.activityId && !invoice.orderId
 			).length,
-			open: result.value.importedInvoices.filter((invoice) => invoice.paymentState === 'unpaid')
-				.length,
+			open: result.value.importedInvoices.items.filter(
+				(invoice) => invoice.paymentState === 'unpaid'
+			).length,
 			overdue: invoices.filter((invoice) => invoice.state === 'En retard').length
 		},
 		usingFallback: result.usingFallback,

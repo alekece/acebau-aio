@@ -1,10 +1,10 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import type { ProductionBundle } from '$lib/production/types';
 import { Tone } from '$lib/components/ui/presets';
 import type { PageLoad } from './$types';
 
 type ProductionResult = {
-	productionTasks: {
+	productionTasks: Page<{
 		id: string;
 		reference: string;
 		sourceVariantId: string | null;
@@ -13,8 +13,8 @@ type ProductionResult = {
 		deadline: string;
 		state: string;
 		planningPreference: string;
-	}[];
-	productionTaskLines: {
+	}>;
+	productionTaskLines: Page<{
 		id: string;
 		productionTaskId: string;
 		pieceId: string;
@@ -26,27 +26,27 @@ type ProductionResult = {
 		failureReason: string | null;
 		failedQuantity: number | null;
 		actualWasteGrams: number | null;
-	}[];
-	variants: { id: string; displayName: string; sku: string }[];
-	printedPieces: { id: string; name: string; reference: string }[];
-	recipeItems: {
+	}>;
+	variants: Page<{ id: string; displayName: string; sku: string }>;
+	printedPieces: Page<{ id: string; name: string; reference: string }>;
+	recipeItems: Page<{
 		variantId: string;
 		pieceId: string;
 		filamentSupplyId: string;
 		quantity: number;
-	}[];
-	pieceMachineProfiles: {
+	}>;
+	pieceMachineProfiles: Page<{
 		pieceId: string;
 		plateCapacity: number;
 		preferred: boolean;
 		excluded: boolean;
-	}[];
-	supplies: { id: string; name: string; reference: string; kind: string }[];
-	machines: { id: string; surname: string; state: string }[];
+	}>;
+	supplies: Page<{ id: string; name: string; reference: string; kind: string }>;
+	machines: Page<{ id: string; surname: string; state: string }>;
 };
 
 const fallback: ProductionResult = {
-	productionTasks: [
+	productionTasks: emptyPage([
 		{
 			id: 'demo-1',
 			reference: 'PRD-000268',
@@ -57,8 +57,8 @@ const fallback: ProductionResult = {
 			state: 'in_progress',
 			planningPreference: 'quality'
 		}
-	],
-	productionTaskLines: [
+	]),
+	productionTaskLines: emptyPage([
 		{
 			id: 'line-1',
 			productionTaskId: 'demo-1',
@@ -85,13 +85,15 @@ const fallback: ProductionResult = {
 			failedQuantity: null,
 			actualWasteGrams: null
 		}))
-	],
-	variants: [{ id: 'variant-vase-blue', displayName: 'Vase ONDRA bleu', sku: 'OND-V-BL' }],
-	printedPieces: [
+	]),
+	variants: emptyPage([
+		{ id: 'variant-vase-blue', displayName: 'Vase ONDRA bleu', sku: 'OND-V-BL' }
+	]),
+	printedPieces: emptyPage([
 		{ id: 'piece-vase', name: 'Corps vase ONDRA', reference: 'PIE-0018' },
 		{ id: 'piece-insert', name: 'Insert vase ONDRA', reference: 'PIE-0019' }
-	],
-	recipeItems: [
+	]),
+	recipeItems: emptyPage([
 		{
 			variantId: 'variant-vase-blue',
 			pieceId: 'piece-vase',
@@ -104,13 +106,15 @@ const fallback: ProductionResult = {
 			filamentSupplyId: 'filament-blue',
 			quantity: 1
 		}
-	],
-	pieceMachineProfiles: [
+	]),
+	pieceMachineProfiles: emptyPage([
 		{ pieceId: 'piece-vase', plateCapacity: 4, preferred: true, excluded: false },
 		{ pieceId: 'piece-insert', plateCapacity: 1, preferred: true, excluded: false }
-	],
-	supplies: [{ id: 'filament-blue', name: 'PLA bleu', reference: 'FIL-BL', kind: 'filament' }],
-	machines: [{ id: 'machine-atlas', surname: 'Atlas', state: 'running' }]
+	]),
+	supplies: emptyPage([
+		{ id: 'filament-blue', name: 'PLA bleu', reference: 'FIL-BL', kind: 'filament' }
+	]),
+	machines: emptyPage([{ id: 'machine-atlas', surname: 'Atlas', state: 'running' }])
 };
 
 const stateLabel: Record<string, string> = {
@@ -145,31 +149,33 @@ const jobStateTone: Record<string, Tone> = {
 	failed: Tone.Error
 };
 
-export const load: PageLoad = async ({ fetch, parent }) => {
+export const load: PageLoad = async ({ fetch, parent, url }) => {
 	const { defaultPageSize } = await parent();
+	const page = Number(url.searchParams.get('page') ?? 1);
 	const result = await graphqlOrFallback<ProductionResult>(
 		fetch,
-		`query ProductionPage($pageSize: Int!) {
-			productionTasks(pageSize: $pageSize) {
-				id reference sourceVariantId productQuantity linkedOrderReference deadline state planningPreference
+		`query ProductionPage($page: Int!, $pageSize: Int!) {
+			productionTasks(page: $page, pageSize: $pageSize) {
+				items { id reference sourceVariantId productQuantity linkedOrderReference deadline state planningPreference }
+				page pageSize totalItems totalPages
 			}
 			productionTaskLines(pageSize: $pageSize) {
-				id productionTaskId pieceId filamentSupplyId quantity machineId state startedAt
-				failureReason failedQuantity actualWasteGrams
+				items { id productionTaskId pieceId filamentSupplyId quantity machineId state startedAt
+				failureReason failedQuantity actualWasteGrams }
 			}
-			variants(pageSize: $pageSize) { id displayName sku }
-			printedPieces(pageSize: $pageSize) { id name reference }
-			recipeItems(pageSize: $pageSize) { variantId pieceId filamentSupplyId quantity }
-			pieceMachineProfiles(pageSize: $pageSize) { pieceId plateCapacity preferred excluded }
-			supplies(pageSize: $pageSize) { id name reference kind }
-			machines(pageSize: $pageSize) { id surname state }
+			variants(pageSize: 100) { items { id displayName sku } }
+			printedPieces(pageSize: 100) { items { id name reference } }
+			recipeItems(pageSize: 100) { items { variantId pieceId filamentSupplyId quantity } }
+			pieceMachineProfiles(pageSize: 100) { items { pieceId plateCapacity preferred excluded } }
+			supplies(pageSize: 100) { items { id name reference kind } }
+			machines(pageSize: 100) { items { id surname state } }
 		}`,
 		fallback,
-		{ pageSize: defaultPageSize }
+		{ page, pageSize: defaultPageSize }
 	);
 
 	const capacityFor = (pieceId: string) => {
-		const profiles = result.value.pieceMachineProfiles.filter(
+		const profiles = result.value.pieceMachineProfiles.items.filter(
 			(profile) => profile.pieceId === pieceId && !profile.excluded
 		);
 		return (
@@ -178,28 +184,32 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 		);
 	};
 
-	const tasks: ProductionBundle[] = result.value.productionTasks.map((task) => {
-		const lines = result.value.productionTaskLines.filter(
+	const tasks: ProductionBundle[] = result.value.productionTasks.items.map((task) => {
+		const lines = result.value.productionTaskLines.items.filter(
 			(line) => line.productionTaskId === task.id
 		);
-		const sourceVariant = result.value.variants.find(
+		const sourceVariant = result.value.variants.items.find(
 			(variant) => variant.id === task.sourceVariantId
 		);
 		const names = [
 			...new Set(
 				lines.map(
 					(line) =>
-						result.value.printedPieces.find((piece) => piece.id === line.pieceId)?.name ??
+						result.value.printedPieces.items.find((piece) => piece.id === line.pieceId)?.name ??
 						'Élément archivé'
 				)
 			)
 		];
 		const jobs = lines.map((line) => {
-			const piece = result.value.printedPieces.find((candidate) => candidate.id === line.pieceId);
-			const filament = result.value.supplies.find(
+			const piece = result.value.printedPieces.items.find(
+				(candidate) => candidate.id === line.pieceId
+			);
+			const filament = result.value.supplies.items.find(
 				(candidate) => candidate.id === line.filamentSupplyId
 			);
-			const machine = result.value.machines.find((candidate) => candidate.id === line.machineId);
+			const machine = result.value.machines.items.find(
+				(candidate) => candidate.id === line.machineId
+			);
 			return {
 				...line,
 				stateLabel: jobStateLabel[line.state] ?? line.state,
@@ -237,9 +247,12 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 
 	return {
 		tasks,
-		variants: result.value.variants
+		pagination: result.value.productionTasks,
+		variants: result.value.variants.items
 			.map((variant) => {
-				const recipe = result.value.recipeItems.filter((item) => item.variantId === variant.id);
+				const recipe = result.value.recipeItems.items.filter(
+					(item) => item.variantId === variant.id
+				);
 				return {
 					id: variant.id,
 					label: `${variant.displayName} · ${variant.sku}`,
@@ -252,21 +265,21 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 				};
 			})
 			.filter((variant) => variant.recipe.length > 0),
-		pieces: result.value.printedPieces.map((piece) => ({
+		pieces: result.value.printedPieces.items.map((piece) => ({
 			id: piece.id,
 			label: piece.name,
 			detail: piece.reference,
 			capacity: capacityFor(piece.id)
 		})),
-		filaments: result.value.supplies
+		filaments: result.value.supplies.items
 			.filter((supply) => supply.kind === 'filament')
 			.map((supply) => ({ id: supply.id, label: supply.name, detail: supply.reference })),
-		machines: result.value.machines.map((machine) => ({
+		machines: result.value.machines.items.map((machine) => ({
 			id: machine.id,
 			label: machine.surname,
 			detail: machine.state
 		})),
-		machineLoad: result.value.machines.map((machine) => ({
+		machineLoad: result.value.machines.items.map((machine) => ({
 			name: machine.surname,
 			percentage: machine.state === 'running' ? '100 %' : '0 %',
 			tone: machine.state === 'running' ? Tone.Error : Tone.Success
@@ -281,17 +294,17 @@ export const load: PageLoad = async ({ fetch, parent }) => {
 		readiness: [
 			{
 				label: 'Créer une pièce imprimée',
-				ready: result.value.printedPieces.length > 0,
+				ready: result.value.printedPieces.items.length > 0,
 				href: '/pieces'
 			},
 			{
 				label: 'Ajouter un filament',
-				ready: result.value.supplies.some((supply) => supply.kind === 'filament'),
+				ready: result.value.supplies.items.some((supply) => supply.kind === 'filament'),
 				href: '/inventory'
 			},
 			{
 				label: 'Ajouter une machine',
-				ready: result.value.machines.length > 0,
+				ready: result.value.machines.items.length > 0,
 				href: '/machines'
 			}
 		],

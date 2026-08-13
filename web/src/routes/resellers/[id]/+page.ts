@@ -1,4 +1,4 @@
-import { graphqlOrFallback } from '$lib/api/graphql';
+import { emptyPage, graphqlOrFallback, type Page } from '$lib/api/graphql';
 import type { PageLoad } from './$types';
 
 type ResellerDetailResult = {
@@ -12,14 +12,14 @@ type ResellerDetailResult = {
 		nextActionDate: string | null;
 		nextAction: string;
 	};
-	customerOrders: {
+	customerOrders: Page<{
 		id: string;
 		resellerId: string | null;
 		reference: string;
 		requestedOn: string;
 		totalHt: string;
 		state: string;
-	}[];
+	}>;
 };
 
 export const load: PageLoad = async ({ fetch, params, parent }) => {
@@ -35,13 +35,13 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
 			nextActionDate: '2026-08-20',
 			nextAction: 'Relancer'
 		},
-		customerOrders: []
+		customerOrders: emptyPage()
 	};
 	const result = await graphqlOrFallback<ResellerDetailResult>(
 		fetch,
 		`query ResellerDetail($id: String!, $pageSize: Int!) {
 			reseller(id: $id) { id businessName city country relationship primaryEmail nextActionDate nextAction }
-			customerOrders(pageSize: $pageSize) { id resellerId reference requestedOn totalHt state }
+			customerOrders(pageSize: $pageSize) { items { id resellerId reference requestedOn totalHt state } }
 		}`,
 		fallback,
 		{ id: params.id, pageSize: defaultPageSize }
@@ -49,7 +49,7 @@ export const load: PageLoad = async ({ fetch, params, parent }) => {
 
 	return {
 		reseller: result.value.reseller,
-		orders: result.value.customerOrders.filter((order) => order.resellerId === params.id),
+		orders: result.value.customerOrders.items.filter((order) => order.resellerId === params.id),
 		usingFallback: result.usingFallback,
 		loadError: result.error
 	};

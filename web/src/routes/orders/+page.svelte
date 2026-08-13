@@ -58,6 +58,11 @@
 			<h2 class="m-0 text-lg font-bold text-surface-900-100">Toutes les commandes</h2>
 		</div>
 		<Table
+			responsiveCards
+			page={data.pagination.page}
+			pageSize={data.pagination.pageSize}
+			totalItems={data.pagination.totalItems}
+			totalPages={data.pagination.totalPages}
 			><thead
 				><tr
 					><th></th><th>Commande</th><th>Source</th><th>Date</th><th>Valeur</th><th>État</th><th
