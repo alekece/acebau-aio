@@ -15,7 +15,7 @@
 		defaultLengthUnit: string;
 		defaultPowerUnit: string;
 		defaultPageSize: string;
-		electricityRate: number;
+		electricityRate: string;
 		electricityUnit: string;
 	};
 	let settings = $state<SettingsForm>({
@@ -24,7 +24,7 @@
 		defaultLengthUnit: 'mm',
 		defaultPowerUnit: 'W',
 		defaultPageSize: '10',
-		electricityRate: 0.25,
+		electricityRate: '0.25',
 		electricityUnit: '€/kWh'
 	});
 	let initialized = $state(false);
@@ -47,7 +47,7 @@
 			defaultLengthUnit: source?.defaultLengthUnit ?? 'mm',
 			defaultPowerUnit: source?.defaultPowerUnit ?? 'W',
 			defaultPageSize: String(source?.defaultPageSize ?? 10),
-			electricityRate: Number.parseFloat(rateMatch?.[1].replace(',', '.') ?? '0.25'),
+			electricityRate: rateMatch?.[1].replace(',', '.') ?? '0.25',
 			electricityUnit: rateMatch?.[2] || '€/kWh'
 		};
 		savedSnapshot = JSON.stringify(settings);

@@ -27,9 +27,9 @@
 	let reference = $state('');
 	let kind = $state('filament');
 	let baseUnit = $state('');
-	let availableQuantity = $state(0);
-	let lowStockThreshold = $state(0);
-	let targetQuantity = $state(0);
+	let availableQuantity = $state('0');
+	let lowStockThreshold = $state('0');
+	let targetQuantity = $state('0');
 	let busy = $state(false);
 	let error = $state('');
 	let copyOpen = $state(false);
@@ -52,9 +52,9 @@
 			reference = '';
 			kind = 'filament';
 			baseUnit = '';
-			availableQuantity = 0;
-			lowStockThreshold = 0;
-			targetQuantity = 0;
+			availableQuantity = '0';
+			lowStockThreshold = '0';
+			targetQuantity = '0';
 			copyOpen = false;
 			selectedSupplyId = supplies[0]?.id ?? '';
 			error = '';
@@ -73,9 +73,9 @@
 		reference = '';
 		kind = source.kind;
 		baseUnit = source.baseUnit;
-		availableQuantity = 0;
-		lowStockThreshold = source.lowStockThreshold;
-		targetQuantity = source.targetQuantity;
+		availableQuantity = '0';
+		lowStockThreshold = source.lowStockThreshold.toString();
+		targetQuantity = source.targetQuantity.toString();
 		copyOpen = false;
 	}
 
@@ -98,9 +98,9 @@
 						reference,
 						kind,
 						baseUnit,
-						availableQuantity,
-						lowStockThreshold,
-						targetQuantity
+						availableQuantity: Number(availableQuantity),
+						lowStockThreshold: Number(lowStockThreshold),
+						targetQuantity: Number(targetQuantity)
 					}
 				}
 			);

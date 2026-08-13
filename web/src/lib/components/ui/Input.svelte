@@ -22,7 +22,7 @@
 	}
 
 	let classes = $derived(
-		`${as === 'select' ? 'select' : 'input'} border border-surface-300-700 bg-surface-50-950 px-3 py-2 ${value ? 'font-medium text-surface-950-50' : 'text-surface-700-300'} placeholder:text-surface-500-400 shadow-sm focus:border-tertiary-500 focus:ring-2 focus:ring-tertiary-500/20 ${className ?? ''}`
+		`${as === 'select' ? 'select' : 'input'} border border-surface-300-700 bg-surface-50-950 px-3 py-2 ${value ? 'font-medium text-surface-950-50' : 'text-surface-700-300'} placeholder:font-normal placeholder:italic placeholder:text-surface-400-500 shadow-sm focus:border-tertiary-500 focus:ring-2 focus:ring-tertiary-500/20 ${className ?? ''}`
 	);
 </script>
 

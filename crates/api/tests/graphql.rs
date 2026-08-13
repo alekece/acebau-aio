@@ -42,7 +42,10 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
     let second = create_machine_model(&http, &endpoint, &prefix, "two").await;
     let third = create_machine_model(&http, &endpoint, &prefix, "three").await;
     assert_eq!(first["name"], "one");
-    assert_eq!(first["purchaseCost"], json!({ "value": "100", "unit": "€" }));
+    assert_eq!(
+        first["purchaseCost"],
+        json!({ "value": "0.1234567890123456789012345678", "unit": "€" })
+    );
     assert_eq!(
         first["maintenanceCost"],
         json!({
@@ -110,7 +113,7 @@ fn machine_model_input(brand: &str, name: &str) -> Value {
     json!({
         "brand": brand,
         "name": name,
-        "purchaseCost": { "value": "100", "unit": "€" },
+        "purchaseCost": { "value": "0.1234567890123456789012345678", "unit": "€" },
         "maintenanceCost": {
             "value": "5",
             "numeratorUnit": "€",

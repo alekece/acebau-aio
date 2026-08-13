@@ -22,23 +22,24 @@
 	import Table from '$lib/components/ui/Table.svelte';
 	import TableSection from '$lib/components/ui/TableSection.svelte';
 	import MetricInput from '$lib/components/forms/MetricInput.svelte';
+	import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
 	import type { PageProps } from './$types';
 
 	type MachineModel = {
 		id: string;
 		brand: string;
 		name: string;
-		purchaseCost: string;
-		maintenanceCost: string;
-		lifetime: string;
-		averagePower: string;
+		purchaseCost: MetricDTO<PriceUnit>;
+		maintenanceCost: RatioDTO<PriceUnit, TimeUnit>;
+		lifetime: MetricDTO<TimeUnit>;
+		averagePower: MetricDTO<PowerUnit>;
 	};
 
 	type Machine = {
 		id: string;
 		surname: string;
 		modelId: string;
-		printingTime: string;
+		printingTime: MetricDTO<TimeUnit>;
 		state: 'available' | 'running' | 'maintenance' | 'broken';
 		model: MachineModel;
 	};
@@ -47,10 +48,11 @@
 		brand: string;
 		name: string;
 		purchaseCost: string;
-		maintenanceCost: string;
-		lifetimeValue: number;
+		maintenanceCostValue: string;
+		maintenanceCostUnit: string;
+		lifetimeValue: string;
 		lifetimeUnit: string;
-		averagePowerValue: number;
+		averagePowerValue: string;
 		averagePowerUnit: string;
 	};
 
@@ -105,6 +107,12 @@
 		{ value: 'd', label: 'jour' },
 		{ value: 'y', label: 'année' }
 	];
+	const maintenanceCostUnits = [
+		{ value: 'min', label: 'minute' },
+		{ value: 'h', label: 'heure' },
+		{ value: 'd', label: 'jour' },
+		{ value: 'y', label: 'année' }
+	];
 	const powerUnits = [
 		{ value: 'W', label: 'W' },
 		{ value: 'kW', label: 'kW' }
@@ -115,30 +123,35 @@
 			brand: '',
 			name: '',
 			purchaseCost: '100',
-			maintenanceCost: '5/1h',
-			lifetimeValue: 10,
+			maintenanceCostValue: '5',
+			maintenanceCostUnit: 'y',
+			lifetimeValue: '10',
 			lifetimeUnit: '',
-			averagePowerValue: 100,
+			averagePowerValue: '100',
 			averagePowerUnit: ''
 		};
 	}
 
-	function parseMetric(value: string, fallbackValue: number, fallbackUnit: string) {
-		const match = value.match(/([\d.,]+)\s*([a-zA-Z]+)/);
-		return {
-			value: match ? Number.parseFloat(match[1].replace(',', '.')) : fallbackValue,
-			unit: match?.[2] ?? fallbackUnit
-		};
+	function metricLabel(metric: MetricDTO) {
+		return `${metric.value}${metric.unit}`;
+	}
+
+	function ratioLabel(ratio: RatioDTO) {
+		return `${ratio.value}${ratio.numeratorUnit}/${ratio.denominatorUnit}`;
 	}
 
 	function modelInput(form: ModelForm) {
 		return {
 			brand: form.brand,
 			name: form.name,
-			purchaseCost: form.purchaseCost,
-			maintenanceCost: form.maintenanceCost,
-			lifetime: `${form.lifetimeValue}${form.lifetimeUnit}`,
-			averagePower: `${form.averagePowerValue}${form.averagePowerUnit}`
+			purchaseCost: { value: form.purchaseCost, unit: '€' },
+			maintenanceCost: {
+				value: form.maintenanceCostValue,
+				numeratorUnit: '€',
+				denominatorUnit: form.maintenanceCostUnit
+			},
+			lifetime: { value: form.lifetimeValue, unit: form.lifetimeUnit },
+			averagePower: { value: form.averagePowerValue, unit: form.averagePowerUnit }
 		};
 	}
 
@@ -169,18 +182,17 @@
 	}
 
 	function editModel(model: MachineModel) {
-		const lifetime = parseMetric(model.lifetime, 10, 'h');
-		const averagePower = parseMetric(model.averagePower, 100, 'W');
 		editingModelId = model.id;
 		modelForm = {
 			brand: model.brand,
 			name: model.name,
-			purchaseCost: model.purchaseCost,
-			maintenanceCost: model.maintenanceCost,
-			lifetimeValue: lifetime.value,
-			lifetimeUnit: lifetime.unit,
-			averagePowerValue: averagePower.value,
-			averagePowerUnit: averagePower.unit
+			purchaseCost: model.purchaseCost.value,
+			maintenanceCostValue: model.maintenanceCost.value,
+			maintenanceCostUnit: model.maintenanceCost.denominatorUnit,
+			lifetimeValue: model.lifetime.value,
+			lifetimeUnit: model.lifetime.unit,
+			averagePowerValue: model.averagePower.value,
+			averagePowerUnit: model.averagePower.unit
 		};
 	}
 
@@ -267,7 +279,11 @@
 				{ input: modelInput(modelForm) }
 			);
 			await gql(`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`, {
-				input: { ...machineForm, modelId: result.createMachineModel.id, printingTime: '0h' }
+				input: {
+					...machineForm,
+					modelId: result.createMachineModel.id,
+					printingTime: { value: '0', unit: 'h' }
+				}
 			});
 			closeModal();
 			await invalidateAll();
@@ -283,10 +299,8 @@
 		error = '';
 		try {
 			await gql(
-				`mutation($input: MachineInput!) {
-					createMachine(input: $input) { id surname modelId printingTime state }
-				}`,
-				{ input: { ...machineForm, printingTime: '0h' } }
+				`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`,
+				{ input: { ...machineForm, printingTime: { value: '0', unit: 'h' } } }
 			);
 			closeModal();
 			await invalidateAll();
@@ -464,9 +478,14 @@
 							<label class="label"
 								>Prix d’achat<Input required bind:value={modelForm.purchaseCost} /></label
 							>
-							<label class="label"
-								>Coût de maintenance<Input required bind:value={modelForm.maintenanceCost} /></label
-							>
+							<MetricInput
+								label="Coût de maintenance"
+								required
+								defaultUnit="y"
+								bind:value={modelForm.maintenanceCostValue}
+								bind:unit={modelForm.maintenanceCostUnit}
+								units={maintenanceCostUnits}
+							/>
 							<MetricInput
 								label="Durée de vie"
 								required
@@ -662,7 +681,7 @@
 									>{:else}<MachineStatus state={machine.state} />{/if}</td
 							>
 							<td data-label="Charge">{hardcodedWorkload}</td>
-							<td data-label="Temps d’impression">{machine.printingTime}</td>
+							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
 							<td data-label="Prochaine maintenance">{hardcodedNextMaintenance}</td>
 							<td data-label="Coût effectif">{hardcodedPowerCost}</td>
 							<td
@@ -734,7 +753,7 @@
 								<strong class="block text-sm text-surface-900-100"
 									>{model.brand} · {model.name}</strong
 								><small class="text-surface-700-300"
-									>{model.averagePower} · durée de vie {model.lifetime}{#if machineCount > 0}
+									>{metricLabel(model.averagePower)} · durée de vie {metricLabel(model.lifetime)}{#if machineCount > 0}
 										· {machineCount} machine{machineCount > 1 ? 's' : ''}{/if}</small
 								>
 							</div>
@@ -771,9 +790,14 @@
 							class="label">Nom<Input required bind:value={modelForm.name} /></label
 						><label class="label"
 							>Prix d’achat<Input required bind:value={modelForm.purchaseCost} /></label
-						><label class="label"
-							>Coût de maintenance<Input required bind:value={modelForm.maintenanceCost} /></label
 						><MetricInput
+							label="Coût de maintenance"
+							required
+							defaultUnit="y"
+							bind:value={modelForm.maintenanceCostValue}
+							bind:unit={modelForm.maintenanceCostUnit}
+							units={maintenanceCostUnits}
+						/><MetricInput
 							label="Durée de vie"
 							required
 							kind="time"
@@ -894,7 +918,7 @@
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Temps d’impression</span><strong
-							>{selectedMachine.printingTime}</strong
+							>{metricLabel(selectedMachine.printingTime)}</strong
 						>
 					</div>
 					<div>
@@ -914,22 +938,22 @@
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Puissance moyenne</span><strong
-							>{selectedMachine.model?.averagePower ?? '—'}</strong
+							>{selectedMachine.model ? metricLabel(selectedMachine.model.averagePower) : '—'}</strong
 						>
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Prix d’achat</span><strong
-							>{selectedMachine.model?.purchaseCost ?? '—'}</strong
+							>{selectedMachine.model ? metricLabel(selectedMachine.model.purchaseCost) : '—'}</strong
 						>
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Maintenance</span><strong
-							>{selectedMachine.model?.maintenanceCost ?? '—'}</strong
+							>{selectedMachine.model ? ratioLabel(selectedMachine.model.maintenanceCost) : '—'}</strong
 						>
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Durée de vie</span><strong
-							>{selectedMachine.model?.lifetime ?? '—'}</strong
+							>{selectedMachine.model ? metricLabel(selectedMachine.model.lifetime) : '—'}</strong
 						>
 					</div>
 				</div>
