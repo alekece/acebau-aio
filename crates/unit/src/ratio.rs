@@ -44,6 +44,14 @@ impl<T: Unit, U: Unit> Ratio<T, U> {
         self.numerator.value()
     }
 
+    pub fn numerator_unit(&self) -> T {
+        self.numerator.unit()
+    }
+
+    pub fn denominator_unit(&self) -> U {
+        self.denominator.unit()
+    }
+
     pub fn convert_to(self, numerator: T, denominator: U) -> Self {
         Self::with_units(
             self.numerator.value() * self.numerator.unit().factor() / numerator.factor() * denominator.factor()
@@ -236,11 +244,21 @@ mod graphql {
     use std::{borrow::Cow, str::FromStr};
 
     use async_graphql::{
-        ContextSelectionSet, InputType, InputValueError, InputValueResult, OutputType, Positioned, ServerResult, Value,
-        parser::types::Field, registry::Registry,
+        ContextSelectionSet, InputObject, InputType, InputValueError, InputValueResult, OutputType, Positioned,
+        ServerResult, Value,
+        indexmap::IndexMap,
+        parser::types::Field,
+        registry::{Deprecation, MetaInputValue, MetaType, MetaTypeId, Registry},
     };
 
     use super::*;
+
+    #[derive(InputObject)]
+    struct RatioInput {
+        value: String,
+        numerator_unit: String,
+        denominator_unit: String,
+    }
 
     impl<T, U> InputType for Ratio<T, U>
     where
@@ -251,20 +269,56 @@ mod graphql {
         type RawValueType = Self;
 
         fn type_name() -> Cow<'static, str> {
-            "String".into()
+            format!("{}Per{}RatioInput", T::NAME, U::NAME).into()
         }
 
         fn create_type_info(registry: &mut Registry) -> String {
-            <String as InputType>::create_type_info(registry)
+            registry.create_input_type::<Self, _>(MetaTypeId::InputObject, |registry| MetaType::InputObject {
+                name: <Self as InputType>::type_name().into_owned(),
+                description: None,
+                input_fields: ["value", "numeratorUnit", "denominatorUnit"]
+                    .into_iter()
+                    .map(|name| {
+                        (
+                            name.to_owned(),
+                            MetaInputValue {
+                                name: name.to_owned(),
+                                description: None,
+                                ty: <String as InputType>::create_type_info(registry),
+                                deprecation: Deprecation::NoDeprecated,
+                                default_value: None,
+                                visible: None,
+                                inaccessible: false,
+                                tags: Vec::new(),
+                                is_secret: false,
+                                directive_invocations: Vec::new(),
+                            },
+                        )
+                    })
+                    .collect::<IndexMap<_, _>>(),
+                visible: None,
+                inaccessible: false,
+                tags: Vec::new(),
+                rust_typename: Some(std::any::type_name::<Self>()),
+                oneof: false,
+                directive_invocations: Vec::new(),
+            })
         }
 
         fn parse(value: Option<Value>) -> InputValueResult<Self> {
-            let value = String::parse(value).map_err(|_| InputValueError::custom("expected a string"))?;
-            value.parse().map_err(InputValueError::custom)
+            let input = RatioInput::parse(value).map_err(InputValueError::propagate)?;
+            format!("{}{}/1{}", input.value, input.numerator_unit, input.denominator_unit)
+                .parse()
+                .map_err(InputValueError::custom)
         }
 
         fn to_value(&self) -> Value {
-            self.to_string().into()
+            RatioInput {
+                value: self.get().to_string(),
+                numerator_unit: self.numerator_unit().to_string(),
+                denominator_unit: self.denominator_unit().to_string(),
+            }
+            .to_value()
         }
 
         fn as_raw_value(&self) -> Option<&Self::RawValueType> {
@@ -287,6 +341,18 @@ mod graphql {
 
         async fn resolve(&self, _: &ContextSelectionSet<'_>, _: &Positioned<Field>) -> ServerResult<Value> {
             Ok(Value::String(self.to_string()))
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::PricePerTime;
+
+        use super::*;
+
+        #[test]
+        fn graphql_input_name_includes_both_unit_names() {
+            assert_eq!(<PricePerTime as InputType>::type_name(), "PricePerTimeRatioInput");
         }
     }
 }

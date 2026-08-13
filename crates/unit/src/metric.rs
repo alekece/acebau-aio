@@ -273,11 +273,20 @@ mod graphql {
     use std::{borrow::Cow, str::FromStr};
 
     use async_graphql::{
-        ContextSelectionSet, InputType, InputValueError, InputValueResult, OutputType, Positioned, ServerResult, Value,
-        parser::types::Field, registry::Registry,
+        ContextSelectionSet, InputObject, InputType, InputValueError, InputValueResult, OutputType, Positioned,
+        ServerResult, Value,
+        indexmap::IndexMap,
+        parser::types::Field,
+        registry::{Deprecation, MetaInputValue, MetaType, MetaTypeId, Registry},
     };
 
     use super::*;
+
+    #[derive(InputObject)]
+    struct MetricInput {
+        value: String,
+        unit: String,
+    }
 
     impl<T> InputType for Metric<T>
     where
@@ -287,20 +296,55 @@ mod graphql {
         type RawValueType = Self;
 
         fn type_name() -> Cow<'static, str> {
-            "String".into()
+            format!("{}MetricInput", T::NAME).into()
         }
 
         fn create_type_info(registry: &mut Registry) -> String {
-            <String as InputType>::create_type_info(registry)
+            registry.create_input_type::<Self, _>(MetaTypeId::InputObject, |registry| MetaType::InputObject {
+                name: <Self as InputType>::type_name().into_owned(),
+                description: None,
+                input_fields: ["value", "unit"]
+                    .into_iter()
+                    .map(|name| {
+                        (
+                            name.to_owned(),
+                            MetaInputValue {
+                                name: name.to_owned(),
+                                description: None,
+                                ty: <String as InputType>::create_type_info(registry),
+                                deprecation: Deprecation::NoDeprecated,
+                                default_value: None,
+                                visible: None,
+                                inaccessible: false,
+                                tags: Vec::new(),
+                                is_secret: false,
+                                directive_invocations: Vec::new(),
+                            },
+                        )
+                    })
+                    .collect::<IndexMap<_, _>>(),
+                visible: None,
+                inaccessible: false,
+                tags: Vec::new(),
+                rust_typename: Some(std::any::type_name::<Self>()),
+                oneof: false,
+                directive_invocations: Vec::new(),
+            })
         }
 
         fn parse(value: Option<Value>) -> InputValueResult<Self> {
-            let value = String::parse(value).map_err(|_| InputValueError::custom("expected a string"))?;
-            value.parse().map_err(InputValueError::custom)
+            let input = MetricInput::parse(value).map_err(InputValueError::propagate)?;
+            format!("{}{}", input.value, input.unit)
+                .parse()
+                .map_err(InputValueError::custom)
         }
 
         fn to_value(&self) -> Value {
-            self.to_string().into()
+            MetricInput {
+                value: self.value.to_string(),
+                unit: self.unit.to_string(),
+            }
+            .to_value()
         }
 
         fn as_raw_value(&self) -> Option<&Self::RawValueType> {
@@ -322,6 +366,20 @@ mod graphql {
 
         async fn resolve(&self, _: &ContextSelectionSet<'_>, _: &Positioned<Field>) -> ServerResult<Value> {
             Ok(Value::String(self.to_string()))
+        }
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use crate::metric::{Power, Price, Time};
+
+        use super::*;
+
+        #[test]
+        fn graphql_input_names_include_the_unit_name() {
+            assert_eq!(<Price as InputType>::type_name(), "PriceMetricInput");
+            assert_eq!(<Time as InputType>::type_name(), "TimeMetricInput");
+            assert_eq!(<Power as InputType>::type_name(), "PowerMetricInput");
         }
     }
 }
