@@ -912,7 +912,7 @@
 		<Modal
 			open={true}
 			onOpenChange={handleModalChange}
-			contentClasses="w-full max-w-xl rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
+			contentClasses="w-full max-w-3xl rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
 		>
 			{#snippet content()}
 				<div class="mb-6 flex items-start justify-between gap-4">
@@ -936,7 +936,7 @@
 					}}
 					class="grid gap-4"
 				>
-					<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
+					<div class="grid grid-cols-3 gap-3 max-[700px]:grid-cols-1">
 						<label class="label"
 							>Modèle<Input as="select" required bind:value={machineForm.modelId}
 								><option value="" disabled>Choisir un modèle</option
