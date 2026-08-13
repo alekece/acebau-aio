@@ -42,7 +42,7 @@
 
 <div class="table-component" aria-busy={loading}>
 	<div class="table-wrap" class:responsive-cards={responsiveCards}>
-		<table class="table text-sm {tableClass}">
+		<table class="table table-zebra text-sm {tableClass}">
 			{#if loading}
 				<tbody>
 					{#each Array.from({ length: loadingRows }, (_, index) => index) as row (row)}
@@ -60,35 +60,46 @@
 	</div>
 	{#if paginated}
 		<nav
-			class="flex items-center justify-between gap-4 border-t border-surface-300-700 px-4 py-3"
+			class="flex items-center gap-4 border-t border-surface-300-700 px-4 py-3"
+			class:justify-between={(totalPages ?? 0) > 1}
 			aria-label="Pagination du tableau"
 		>
 			<p class="m-0 text-sm text-surface-700-300">
-				{firstItem}–{lastItem} sur {totalItems}
+				{#if (totalPages ?? 0) > 1}
+					{firstItem}–{lastItem} sur {totalItems}
+				{:else if totalItems === 1}
+					1 élément
+				{:else if totalItems === 0}
+					Aucun élément
+				{:else}
+					{totalItems} éléments
+				{/if}
 			</p>
-			<div class="flex items-center gap-2">
-				<button
-					class="btn-icon preset-tonal-surface"
-					type="button"
-					disabled={loading || page === 1}
-					aria-label="Page précédente"
-					onclick={() => onPageChange?.((page ?? 1) - 1)}
-				>
-					<ChevronLeft size={16} />
-				</button>
-				<span class="min-w-20 text-center text-sm text-surface-700-300">
-					Page {page} sur {Math.max(totalPages ?? 0, 1)}
-				</span>
-				<button
-					class="btn-icon preset-tonal-surface"
-					type="button"
-					disabled={loading || page === totalPages || totalPages === 0}
-					aria-label="Page suivante"
-					onclick={() => onPageChange?.((page ?? 1) + 1)}
-				>
-					<ChevronRight size={16} />
-				</button>
-			</div>
+			{#if (totalPages ?? 0) > 1}
+				<div class="flex items-center gap-2">
+					<button
+						class="btn-icon preset-tonal-surface"
+						type="button"
+						disabled={loading || page === 1}
+						aria-label="Page précédente"
+						onclick={() => onPageChange?.((page ?? 1) - 1)}
+					>
+						<ChevronLeft size={16} />
+					</button>
+					<span class="min-w-20 text-center text-sm text-surface-700-300">
+						Page {page} sur {totalPages}
+					</span>
+					<button
+						class="btn-icon preset-tonal-surface"
+						type="button"
+						disabled={loading || page === totalPages}
+						aria-label="Page suivante"
+						onclick={() => onPageChange?.((page ?? 1) + 1)}
+					>
+						<ChevronRight size={16} />
+					</button>
+				</div>
+			{/if}
 		</nav>
 	{/if}
 </div>
