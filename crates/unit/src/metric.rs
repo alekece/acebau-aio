@@ -405,9 +405,9 @@ mod tests {
     #[test]
     fn test_metric_canonicalize() {
         for (expected_value, metric) in [
-            (8760., Time::from_years(1.)),
-            (48., Time::from_days(2.)),
-            (6., Time::from_hours(6.)),
+            (525_600., Time::from_years(1.)),
+            (2880., Time::from_days(2.)),
+            (360., Time::from_hours(6.)),
         ] {
             assert_eq!(expected_value, metric.canonicalize().value());
         }

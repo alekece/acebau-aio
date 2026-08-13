@@ -324,10 +324,19 @@ mod tests {
     #[test]
     fn test_ratio_canonicalize() {
         for (expected_value, ratio) in [
-            (2500.0, Ratio::new(Mass::from_kilograms(5.0), Time::from_hours(2.0))),
-            (1000.0, Ratio::new(Mass::from_kilograms(1.0), Time::from_hours(1.0))),
-            (1.0, Ratio::new(Mass::from_grams(48.0), Time::from_days(2.0))),
-            (2.0, Ratio::new(Mass::from_kilograms(17.520), Time::from_years(1.0))),
+            (
+                5000.0 / 120.0,
+                Ratio::new(Mass::from_kilograms(5.0), Time::from_hours(2.0)),
+            ),
+            (
+                1000.0 / 60.0,
+                Ratio::new(Mass::from_kilograms(1.0), Time::from_hours(1.0)),
+            ),
+            (48.0 / 2880.0, Ratio::new(Mass::from_grams(48.0), Time::from_days(2.0))),
+            (
+                17_520.0 / 525_600.0,
+                Ratio::new(Mass::from_kilograms(17.520), Time::from_years(1.0)),
+            ),
         ] {
             assert_eq!(expected_value, ratio.canonicalize().get());
         }
