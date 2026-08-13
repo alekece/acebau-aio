@@ -8,7 +8,10 @@ use proc_macro2::TokenStream;
 use quote::{ToTokens, format_ident};
 use syn::Ident;
 
-use crate::generate::{ConversionFns, DisplayImpl, FromStrImpl, MetricAlias, UnitImpl};
+use crate::{
+    factor::Factor,
+    generate::{ConversionFns, DisplayImpl, FromStrImpl, MetricAlias, UnitImpl},
+};
 
 pub enum UnitShape<'a> {
     Unitless,
@@ -20,7 +23,7 @@ pub enum UnitShape<'a> {
 pub struct Variant {
     ident: Ident,
     symbol: String,
-    factor: u32,
+    factor: Factor,
     #[darling(default)]
     plural: Option<String>,
 }
@@ -34,7 +37,7 @@ impl Variant {
         &self.symbol
     }
 
-    pub fn factor(&self) -> u32 {
+    pub fn factor(&self) -> Factor {
         self.factor
     }
 

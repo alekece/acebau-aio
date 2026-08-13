@@ -18,13 +18,16 @@ impl ToTokens for UnitImpl<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
         let ident = self.unit.ident();
         let variant_idents = self.variants.iter().map(Variant::ident);
-        let factors = self.variants.iter().map(Variant::factor);
+        let factors = self.variants.iter().map(|variant| {
+            let (lo, mid, hi, scale) = variant.factor().parts();
+            quote! { ::acebau_unit::Decimal::from_parts(#lo, #mid, #hi, false, #scale) }
+        });
 
         tokens.extend(quote! {
             impl ::acebau_unit::unit::Unit for #ident {
                 fn factor(&self) -> ::acebau_unit::Decimal {
                     match self {
-                        #(Self::#variant_idents => ::acebau_unit::Decimal::from(#factors),)*
+                        #(Self::#variant_idents => #factors,)*
                     }
                 }
             }

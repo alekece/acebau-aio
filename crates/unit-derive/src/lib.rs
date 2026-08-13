@@ -1,5 +1,6 @@
 //! Proc-macro implementation for `acebau_unit` derives.
 
+mod factor;
 mod generate;
 mod unit;
 
