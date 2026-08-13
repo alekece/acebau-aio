@@ -40,7 +40,6 @@
 		id: string;
 		brand: string;
 		name: string;
-		purchaseCost: MetricDTO<PriceUnit>;
 		maintenanceCost: RatioDTO<PriceUnit, TimeUnit>;
 		lifetime: MetricDTO<TimeUnit>;
 		averagePower: MetricDTO<PowerUnit>;
@@ -50,6 +49,7 @@
 		id: string;
 		surname: string;
 		modelId: string;
+		purchaseCost: MetricDTO<PriceUnit>;
 		printingTime: MetricDTO<TimeUnit>;
 		state: MachineState;
 		model: MachineModel;
@@ -58,7 +58,6 @@
 	type ModelForm = {
 		brand: string;
 		name: string;
-		purchaseCost: string;
 		maintenanceCostValue: string;
 		maintenanceCostUnit: string;
 		lifetimeValue: string;
@@ -70,6 +69,7 @@
 	type MachineForm = {
 		modelId: string;
 		surname: string;
+		purchaseCost: string;
 		state: Machine['state'];
 	};
 
@@ -91,7 +91,16 @@
 		state: 'available'
 	});
 	let machineEdits = $state<
-		Record<string, { surname: string; state: Machine['state']; busy: boolean; error: string }>
+		Record<
+			string,
+			{
+				modelId: string;
+				surname: string;
+				state: Machine['state'];
+				busy: boolean;
+				error: string;
+			}
+		>
 	>({});
 
 	$effect(() => {
@@ -136,7 +145,6 @@
 		return {
 			brand: '',
 			name: '',
-			purchaseCost: '100',
 			maintenanceCostValue: '5',
 			maintenanceCostUnit: 'y',
 			lifetimeValue: '10',
@@ -158,7 +166,6 @@
 		return {
 			brand: form.brand,
 			name: form.name,
-			purchaseCost: { value: form.purchaseCost, unit: '€' },
 			maintenanceCost: {
 				value: form.maintenanceCostValue,
 				numeratorUnit: '€',
@@ -170,7 +177,7 @@
 	}
 
 	function emptyMachine(): MachineForm {
-		return { modelId: '', surname: '', state: 'available' };
+		return { modelId: '', surname: '', purchaseCost: '', state: 'available' };
 	}
 
 	async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
@@ -200,7 +207,6 @@
 		modelForm = {
 			brand: model.brand,
 			name: model.name,
-			purchaseCost: model.purchaseCost.value,
 			maintenanceCostValue: model.maintenanceCost.value,
 			maintenanceCostUnit: model.maintenanceCost.denominatorUnit,
 			lifetimeValue: model.lifetime.value,
@@ -295,6 +301,7 @@
 			await gql(`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`, {
 				input: {
 					...machineForm,
+					purchaseCost: { value: machineForm.purchaseCost, unit: '€' },
 					modelId: result.createMachineModel.id,
 					printingTime: { value: '0', unit: 'h' }
 				}
@@ -313,7 +320,11 @@
 		error = '';
 		try {
 			await gql(`mutation($input: MachineInput!) { createMachine(input: $input) { id } }`, {
-				input: { ...machineForm, printingTime: { value: '0', unit: 'h' } }
+				input: {
+					...machineForm,
+					purchaseCost: { value: machineForm.purchaseCost, unit: '€' },
+					printingTime: { value: '0', unit: 'h' }
+				}
 			});
 			closeModal();
 			await invalidateAll();
@@ -382,7 +393,13 @@
 	function beginMachineEdit(machine: Machine) {
 		machineEdits = {
 			...machineEdits,
-			[machine.id]: { surname: machine.surname, state: machine.state, busy: false, error: '' }
+			[machine.id]: {
+				modelId: machine.modelId,
+				surname: machine.surname,
+				state: machine.state,
+				busy: false,
+				error: ''
+			}
 		};
 	}
 
@@ -392,6 +409,12 @@
 		machineEdits = remaining;
 	}
 
+	function updateInlineMachineState(id: string, state: MachineState) {
+		const edit = machineEdits[id];
+		if (!edit) return;
+		machineEdits = { ...machineEdits, [id]: { ...edit, state } };
+	}
+
 	async function saveInlineMachine(id: string) {
 		const edit = machineEdits[id];
 		if (!edit?.surname.trim()) return;
@@ -399,7 +422,7 @@
 		try {
 			await gql(
 				`mutation($id: String!, $input: MachineChangeset!) { patchMachine(id: $id, input: $input) { id } }`,
-				{ id, input: { surname: edit.surname.trim(), state: edit.state } }
+				{ id, input: { modelId: edit.modelId, surname: edit.surname.trim(), state: edit.state } }
 			);
 			cancelMachineEdit(id);
 			await invalidateAll();
@@ -412,25 +435,6 @@
 					error: cause instanceof Error ? cause.message : 'Impossible de modifier la machine.'
 				}
 			};
-		}
-	}
-
-	async function updateMachineState(machine: Machine, state: MachineState) {
-		const previousState = machine.state;
-		error = '';
-		machines = machines.map((item) => (item.id === machine.id ? { ...item, state } : item));
-
-		try {
-			await gql(
-				`mutation($id: String!, $input: MachineChangeset!) { patchMachine(id: $id, input: $input) { id } }`,
-				{ id: machine.id, input: { state } }
-			);
-			await invalidateAll();
-		} catch (cause) {
-			machines = machines.map((item) =>
-				item.id === machine.id ? { ...item, state: previousState } : item
-			);
-			error = `L’état de la machine ne peut pas être modifié. ${cause instanceof Error ? cause.message : ''}`;
 		}
 	}
 </script>
@@ -507,14 +511,6 @@
 							<label class="label"
 								>Nom<Input required bind:value={modelForm.name} placeholder="Ex. MK4" /></label
 							>
-							<MetricInput
-								label="Prix d’achat"
-								required
-								requiredFeedback
-								bind:value={modelForm.purchaseCost}
-								unit="€"
-								units={priceUnits}
-							/>
 							<RatioInput
 								label="Coût de maintenance"
 								required
@@ -571,7 +567,14 @@
 									bind:value={machineForm.surname}
 									placeholder="Ex. K2 du fond"
 								/></label
-							><label class="label"
+							><MetricInput
+								label="Prix d’achat réel"
+								required
+								requiredFeedback
+								bind:value={machineForm.purchaseCost}
+								unit="€"
+								units={priceUnits}
+							/><label class="label"
 								>État<Input as="select" bind:value={machineForm.state}
 									><option value="available">Disponible</option><option value="running"
 										>En production</option
@@ -617,7 +620,7 @@
 								</p>
 								<strong class="block text-base text-surface-900-100">{machineForm.surname}</strong
 								><small class="text-surface-700-300"
-									>{machineStateLabel(machineForm.state)} · modèle assigné</small
+									>{machineStateLabel(machineForm.state)} · {machineForm.purchaseCost}€</small
 								>
 							</div>
 						</div>
@@ -671,7 +674,18 @@
 					><Cpu size={16} />{models.length} modèle{models.length > 1 ? 's' : ''}</button
 				>
 			{/snippet}
-			<Table responsiveCards>
+			<Table responsiveCards class="min-w-[68rem] table-fixed">
+				<colgroup>
+					<col class="w-10" />
+					<col class="w-42" />
+					<col class="w-40" />
+					<col class="w-38" />
+					<col class="w-20" />
+					<col class="w-32" />
+					<col class="w-40" />
+					<col class="w-28" />
+					<col class="w-22" />
+				</colgroup>
 				<thead
 					><tr
 						><th>#</th><th>Machine</th><th>Modèle</th><th>État</th><th>Charge</th><th
@@ -695,6 +709,7 @@
 									<div class="grid gap-2">
 										<Input
 											bind:value={machineEdits[machine.id].surname}
+											class="w-full min-w-0"
 											aria-label="Surnom de la machine"
 										/>
 										{#if machineEdits[machine.id].error}<small
@@ -705,27 +720,34 @@
 								{:else}<strong>{machine.surname}</strong><small>#{machine.id.slice(0, 8)}</small
 									>{/if}
 							</td>
-							<td data-label="Modèle"
-								><strong>{machine.model?.name ?? 'Modèle indisponible'}</strong><small
-									>{machine.model?.brand ?? '—'}</small
-								></td
-							>
-							<td data-label="État" onclick={(event) => event.stopPropagation()}
-								>{#if machineEdits[machine.id]}<Input
+							<td data-label="Modèle" onclick={(event) => event.stopPropagation()}>
+								{#if machineEdits[machine.id]}
+									<Input
 										as="select"
-										bind:value={machineEdits[machine.id].state}
-										><option value="available">Disponible</option><option value="running"
-											>En production</option
-										><option value="maintenance">Maintenance</option><option value="broken"
-											>En panne</option
-										></Input
-									>{:else}<SelectableBadge
-										value={machine.state}
+										bind:value={machineEdits[machine.id].modelId}
+										class="w-full min-w-0"
+										disabled={machineEdits[machine.id].busy}
+										aria-label="Modèle de la machine"
+									>
+										{#each models as model (model.id)}
+											<option value={model.id}>{model.brand} · {model.name}</option>
+										{/each}
+									</Input>
+								{:else}
+									<strong>{machine.model?.name ?? 'Modèle indisponible'}</strong>
+									<small>{machine.model?.brand ?? '—'}</small>
+								{/if}
+							</td>
+							<td data-label="État" onclick={(event) => event.stopPropagation()}
+								>{#if machineEdits[machine.id]}<SelectableBadge
+										value={machineEdits[machine.id].state}
 										options={machineStateOptions}
 										size="sm"
-										ariaLabel={`Modifier l’état : ${machineStateLabel(machine.state)}`}
-										onChange={(state) => updateMachineState(machine, state)}
-									/>{/if}</td
+										disabled={machineEdits[machine.id].busy}
+										ariaLabel={`Modifier l’état : ${machineStateLabel(machineEdits[machine.id].state)}`}
+										onChange={(state) => updateInlineMachineState(machine.id, state)}
+									/>
+								{:else}<MachineStatus state={machine.state} />{/if}</td
 							>
 							<td data-label="Charge">{hardcodedWorkload}</td>
 							<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
@@ -837,14 +859,7 @@
 					<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
 						<label class="label">Marque<Input required bind:value={modelForm.brand} /></label><label
 							class="label">Nom<Input required bind:value={modelForm.name} /></label
-						><MetricInput
-							label="Prix d’achat"
-							required
-							requiredFeedback
-							bind:value={modelForm.purchaseCost}
-							unit="€"
-							units={priceUnits}
-						/><RatioInput
+						><RatioInput
 							label="Coût de maintenance"
 							required
 							requiredFeedback
@@ -925,7 +940,14 @@
 								bind:value={machineForm.surname}
 								placeholder="Ex. K2 du fond"
 							/></label
-						><label class="label"
+						><MetricInput
+							label="Prix d’achat réel"
+							required
+							requiredFeedback
+							bind:value={machineForm.purchaseCost}
+							unit="€"
+							units={priceUnits}
+						/><label class="label"
 							>État<Input as="select" bind:value={machineForm.state}
 								><option value="available">Disponible</option><option value="running"
 									>En production</option
@@ -1003,9 +1025,7 @@
 					</div>
 					<div>
 						<span class="block text-xs text-surface-700-300">Prix d’achat</span><strong
-							>{selectedMachine.model
-								? metricLabel(selectedMachine.model.purchaseCost)
-								: '—'}</strong
+							>{metricLabel(selectedMachine.purchaseCost)}</strong
 						>
 					</div>
 					<div>

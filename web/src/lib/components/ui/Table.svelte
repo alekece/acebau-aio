@@ -6,13 +6,15 @@
 		loading = false,
 		loadingRows = 5,
 		loadingColumns = 6,
-		responsiveCards = false
+		responsiveCards = false,
+		class: tableClass = ''
 	}: {
 		children?: Snippet;
 		loading?: boolean;
 		loadingRows?: number;
 		loadingColumns?: number;
 		responsiveCards?: boolean;
+		class?: string;
 	} = $props();
 </script>
 
@@ -21,7 +23,7 @@
 	class:responsive-cards={responsiveCards}
 	aria-busy={loading}
 >
-	<table class="table text-sm">
+	<table class="table text-sm {tableClass}">
 		{#if loading}
 			<tbody>
 				{#each Array.from({ length: loadingRows }, (_, index) => index) as row (row)}
@@ -74,6 +76,9 @@
 		.responsive-cards .table {
 			display: block;
 			min-width: 0;
+		}
+		.responsive-cards > .table > :global(colgroup) {
+			display: none;
 		}
 		.responsive-cards > .table > :global(thead) {
 			position: absolute;

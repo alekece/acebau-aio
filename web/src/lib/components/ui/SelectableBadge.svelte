@@ -26,11 +26,7 @@
 
 	let pending = $state(false);
 	let selected = $derived(options.find((option) => option.value === value) ?? options[0]);
-	let badgeClass = $derived(
-		size === 'sm'
-			? 'pointer-events-none gap-1 [--badge-size:var(--text-xs)]'
-			: 'pointer-events-none gap-1 [--badge-size:var(--text-sm)]'
-	);
+	const badgeClass = 'pointer-events-none gap-1 [--badge-size:var(--text-sm)]';
 	let contentClass = $derived(
 		size === 'sm'
 			? 'w-max min-w-36 rounded-container !border-0 bg-surface-50-950 p-1 shadow-xl outline-none'
