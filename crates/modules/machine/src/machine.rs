@@ -35,6 +35,7 @@ pub struct MachineModel {
     pub maintenance_cost: PricePerTime,
     pub lifetime: Time,
     pub average_power: Power,
+    pub has_carbon_filter: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, Table)]

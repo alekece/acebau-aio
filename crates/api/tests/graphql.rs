@@ -158,7 +158,8 @@ fn machine_model_input(brand: &str, name: &str) -> Value {
             "denominatorUnit": "h"
         },
         "lifetime": { "value": "10", "unit": "h" },
-        "averagePower": { "value": "100", "unit": "W" }
+        "averagePower": { "value": "100", "unit": "W" },
+        "hasCarbonFilter": false
     })
 }
 
@@ -280,7 +281,8 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
                 "denominatorUnit": "h"
             },
             "lifetime": { "value": "10", "unit": "h" },
-            "averagePower": { "value": "100", "unit": "W" }
+            "averagePower": { "value": "100", "unit": "W" },
+            "hasCarbonFilter": false
         }}),
     )
     .await;
@@ -299,6 +301,42 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
         }}),
     )
     .await;
+
+    let maintenance = graphql(
+        &http,
+        &endpoint,
+        r#"query($machineId: String!) {
+            machineMaintenanceSettings(pageSize: 10) { items { id kind dueAfter { value unit } } }
+            machineMaintenanceStatuses(machineId: $machineId) { kind criticity }
+        }"#,
+        json!({"machineId": machine["createMachine"]["id"]}),
+    )
+    .await;
+    assert_eq!(
+        maintenance["machineMaintenanceSettings"]["items"]
+            .as_array()
+            .unwrap()
+            .len(),
+        5
+    );
+    assert_eq!(maintenance["machineMaintenanceStatuses"].as_array().unwrap().len(), 4);
+
+    let recorded = graphql(
+        &http,
+        &endpoint,
+        r#"mutation($input: MachineMaintenanceInput!) {
+            createMachineMaintenance(input: $input) { id kind machineId }
+        }"#,
+        json!({"input": {
+            "machineId": machine["createMachine"]["id"],
+            "kind": "nozzle",
+            "performedAt": "2026-08-14T12:00:00Z",
+            "printingTime": { "value": "0", "unit": "h" },
+            "notes": "Integration maintenance"
+        }}),
+    )
+    .await;
+    assert_eq!(recorded["createMachineMaintenance"]["kind"], "nozzle");
 
     let listed = graphql(
         &http,

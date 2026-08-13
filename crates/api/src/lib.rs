@@ -14,7 +14,9 @@ use acebau_inventory::{
 };
 use acebau_invoice::{ImportedInvoiceMutation, ImportedInvoiceQuery, MIGRATOR as INVOICE_MIGRATOR};
 use acebau_machine::{
-    MIGRATOR as MACHINE_MIGRATOR, MachineModelMutation, MachineModelQuery, MachineMutation, MachineQuery,
+    MIGRATOR as MACHINE_MIGRATOR, MachineMaintenanceMutation, MachineMaintenanceQuery,
+    MachineMaintenanceSettingMutation, MachineMaintenanceSettingQuery, MachineMaintenanceStatusQuery,
+    MachineModelMutation, MachineModelQuery, MachineMutation, MachineQuery,
 };
 use acebau_order::{
     CustomerOrderMutation, CustomerOrderQuery, MIGRATOR as ORDER_MIGRATOR, OrderLineMutation, OrderLineQuery,
@@ -41,6 +43,9 @@ struct QueryRoot(
     RecipeItemQuery,
     MachineQuery,
     MachineModelQuery,
+    MachineMaintenanceSettingQuery,
+    MachineMaintenanceQuery,
+    MachineMaintenanceStatusQuery,
     SupplyQuery,
     FilamentSpoolQuery,
     ProductionTaskQuery,
@@ -65,6 +70,8 @@ struct MutationRoot(
     RecipeItemMutation,
     MachineMutation,
     MachineModelMutation,
+    MachineMaintenanceSettingMutation,
+    MachineMaintenanceMutation,
     SupplyMutation,
     FilamentSpoolMutation,
     ProductionMutation,

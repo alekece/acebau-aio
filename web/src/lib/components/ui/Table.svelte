@@ -15,6 +15,7 @@
 		totalItems,
 		totalPages,
 		onPageChange,
+		pageParam = 'page',
 		class: tableClass = ''
 	}: {
 		children?: Snippet;
@@ -27,6 +28,7 @@
 		totalItems?: number;
 		totalPages?: number;
 		onPageChange?: (page: number) => void | Promise<void>;
+		pageParam?: string;
 		class?: string;
 	} = $props();
 
@@ -43,7 +45,7 @@
 		if (onPageChange) return onPageChange(nextPage);
 
 		const url = new URL(window.location.href);
-		url.searchParams.set('page', String(nextPage));
+		url.searchParams.set(pageParam, String(nextPage));
 		await goto(`${url.pathname}${url.search}`, { keepFocus: true, noScroll: true });
 	}
 </script>

@@ -2,6 +2,8 @@
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
 	import DataSourceNotice from '$lib/components/ui/DataSourceNotice.svelte';
 	import MachineStatus from '$lib/components/machines/MachineStatus.svelte';
+	import MaintenanceCriticity from '$lib/components/machines/MaintenanceCriticity.svelte';
+	import MachineMaintenanceHistory from '$lib/components/machines/MachineMaintenanceHistory.svelte';
 	import ModuleHeader from '$lib/components/ui/ModuleHeader.svelte';
 	import PageShell from '$lib/components/ui/PageShell.svelte';
 	import {
@@ -15,6 +17,7 @@
 		type Unit
 	} from '$lib/unit';
 	import type { PageProps } from './$types';
+	import { maintenanceKindLabels } from '$lib/machine';
 
 	let { data }: PageProps = $props();
 
@@ -41,6 +44,14 @@
 		const hourly = Ratio.from(cost).convertTo('€', 'h');
 		return `${hourly.value.toDecimalPlaces(4).toString()} €/h`;
 	}
+
+	function hours(metric: MetricDTO<TimeUnit>) {
+		return Metric.from(metric).convertTo('h').value.toDecimalPlaces(1).toString();
+	}
+
+	function formatDate(value: string) {
+		return new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium' }).format(new Date(value));
+	}
 </script>
 
 <svelte:head><title>{data.machine.surname} — Machines — Acebau</title></svelte:head>
@@ -65,53 +76,88 @@
 		{#snippet actions()}<MachineStatus state={data.machine.state} />{/snippet}
 	</ModuleHeader>
 
-	<section class="overflow-hidden card border border-surface-300-700 bg-surface-50-950 shadow-sm">
-		<div class="p-6">
-			<h2 class="mb-5 text-lg font-bold text-surface-900-100">Machine</h2>
-			<dl class="grid grid-cols-2 gap-x-6 gap-y-5 max-[520px]:grid-cols-1">
-				<div>
-					<dt class="text-sm text-surface-700-300">Prix d’achat</dt>
-					<dd class="mt-1 font-semibold">{metricLabel(data.machine.purchaseCost)}</dd>
-				</div>
-				<div>
-					<dt class="text-sm text-surface-700-300">Temps d’impression enregistré</dt>
-					<dd class="mt-1 font-semibold">{metricLabel(data.machine.printingTime)}</dd>
-				</div>
-				<div>
-					<dt class="text-sm text-surface-700-300">Coût d’usage</dt>
-					<dd class="mt-1 font-semibold">{usageCostLabel(data.machine.usageCost)}</dd>
-				</div>
-				<div>
-					<dt class="text-sm text-surface-700-300">Identifiant</dt>
-					<dd class="mt-1 font-mono text-sm break-all">{data.machine.id}</dd>
-				</div>
-			</dl>
-		</div>
+	<div class="flex flex-col gap-6">
+		<section class="overflow-hidden card border border-surface-300-700 bg-surface-50-950 shadow-sm">
+			<div class="p-6">
+				<h2 class="mb-5 text-lg font-bold text-surface-900-100">Machine</h2>
+				<dl class="grid grid-cols-2 gap-x-6 gap-y-5 max-[520px]:grid-cols-1">
+					<div>
+						<dt class="text-sm text-surface-700-300">Prix d’achat</dt>
+						<dd class="mt-1 font-semibold">{metricLabel(data.machine.purchaseCost)}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Temps d’impression enregistré</dt>
+						<dd class="mt-1 font-semibold">{metricLabel(data.machine.printingTime)}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Coût d’usage</dt>
+						<dd class="mt-1 font-semibold">{usageCostLabel(data.machine.usageCost)}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Identifiant</dt>
+						<dd class="mt-1 font-mono text-sm break-all">{data.machine.id}</dd>
+					</div>
+				</dl>
+			</div>
 
-		<div class="border-t border-surface-300-700 p-6">
-			<h2 class="mb-5 text-lg font-bold text-surface-900-100">Modèle</h2>
-			<dl class="grid grid-cols-2 gap-x-6 gap-y-5 max-[520px]:grid-cols-1">
-				<div>
-					<dt class="text-sm text-surface-700-300">Fabricant</dt>
-					<dd class="mt-1 font-semibold">{data.machine.model.brand}</dd>
-				</div>
-				<div>
-					<dt class="text-sm text-surface-700-300">Modèle</dt>
-					<dd class="mt-1 font-semibold">{data.machine.model.name}</dd>
-				</div>
-				<div>
-					<dt class="text-sm text-surface-700-300">Puissance moyenne</dt>
-					<dd class="mt-1 font-semibold">{powerLabel(data.machine.model.averagePower)}</dd>
-				</div>
-				<div>
-					<dt class="text-sm text-surface-700-300">Durée de vie</dt>
-					<dd class="mt-1 font-semibold">{lifetimeLabel(data.machine.model.lifetime)}</dd>
-				</div>
-				<div class="col-span-2 max-[520px]:col-span-1">
-					<dt class="text-sm text-surface-700-300">Coût de maintenance</dt>
-					<dd class="mt-1 font-semibold">{ratioLabel(data.machine.model.maintenanceCost)}</dd>
-				</div>
-			</dl>
-		</div>
-	</section>
+			<div class="border-t border-surface-300-700 p-6">
+				<h2 class="mb-5 text-lg font-bold text-surface-900-100">Modèle</h2>
+				<dl class="grid grid-cols-2 gap-x-6 gap-y-5 max-[520px]:grid-cols-1">
+					<div>
+						<dt class="text-sm text-surface-700-300">Fabricant</dt>
+						<dd class="mt-1 font-semibold">{data.machine.model.brand}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Modèle</dt>
+						<dd class="mt-1 font-semibold">{data.machine.model.name}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Puissance moyenne</dt>
+						<dd class="mt-1 font-semibold">{powerLabel(data.machine.model.averagePower)}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Durée de vie</dt>
+						<dd class="mt-1 font-semibold">{lifetimeLabel(data.machine.model.lifetime)}</dd>
+					</div>
+					<div class="col-span-2 max-[520px]:col-span-1">
+						<dt class="text-sm text-surface-700-300">Coût de maintenance</dt>
+						<dd class="mt-1 font-semibold">{ratioLabel(data.machine.model.maintenanceCost)}</dd>
+					</div>
+				</dl>
+			</div>
+		</section>
+
+		<section class="card border border-surface-300-700 bg-surface-50-950 p-6 shadow-sm">
+			<div class="mb-5">
+				<h2 class="text-lg font-bold text-surface-900-100">Maintenance</h2>
+				<p class="mt-1 text-sm text-surface-700-300">
+					Échéances calculées depuis le compteur d’impression.
+				</p>
+			</div>
+			<div class="grid grid-cols-2 gap-3 max-[700px]:grid-cols-1">
+				{#each data.maintenanceStatuses as status (status.kind)}
+					<article class="rounded-base border border-surface-300-700 bg-surface-100-900 p-4">
+						<div class="flex items-start justify-between gap-3">
+							<strong>{maintenanceKindLabels[status.kind]}</strong>
+							<MaintenanceCriticity criticity={status.criticity} />
+						</div>
+						<p class="mt-3 text-sm text-surface-700-300">
+							{hours(status.printingTimeSinceMaintenance)} h depuis la dernière opération · à prévoir
+							à
+							{hours(status.dueAfter)} h · critique à {hours(status.criticalAfter)} h
+						</p>
+						<small
+							>{status.lastPerformedAt
+								? `Dernière intervention le ${formatDate(status.lastPerformedAt)}`
+								: 'Aucune intervention enregistrée'}</small
+						>
+					</article>
+				{/each}
+			</div>
+			<div class="mt-6 border-t border-surface-300-700 pt-5">
+				<h3 class="mb-3 font-semibold">Historique</h3>
+				<MachineMaintenanceHistory records={data.maintenanceHistory} pageParam="maintenancePage" />
+			</div>
+		</section>
+	</div>
 </PageShell>
