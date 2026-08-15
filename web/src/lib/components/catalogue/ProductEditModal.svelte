@@ -5,6 +5,7 @@
 	import FormModal from '$lib/components/ui/FormModal.svelte';
 	import Button from '$lib/components/ui/Button.svelte';
 	import Input from '$lib/components/ui/forms/Input.svelte';
+	import Checkbox from '$lib/components/ui/forms/Checkbox.svelte';
 	import Copy from '@lucide/svelte/icons/copy';
 
 	type ProductTemplate = {
@@ -127,7 +128,7 @@
 	</div>
 	<label class="label">Description courte<Input bind:value={shortDescription} /></label>
 	<label class="flex min-h-11 items-center gap-3 text-sm text-surface-900-100">
-		<input class="checkbox" type="checkbox" bind:checked={customizable} /> Personnalisation disponible
+		<Checkbox bind:checked={customizable} /> Personnalisation disponible
 	</label>
 	{#if error}<p class="rounded-base preset-tonal-error p-3 text-sm" role="alert">{error}</p>{/if}
 </FormModal>

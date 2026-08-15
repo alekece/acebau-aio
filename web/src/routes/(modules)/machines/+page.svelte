@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { goto, invalidateAll } from '$app/navigation';
-	import { tick } from 'svelte';
 	import Decimal from 'decimal.js';
 	import Check from '@lucide/svelte/icons/check';
 	import Plus from '@lucide/svelte/icons/plus';
@@ -27,7 +26,6 @@
 	import OnboardingPanel from '$lib/components/ui/OnboardingPanel.svelte';
 	import PageShell from '$lib/components/ui/PageShell.svelte';
 	import Table from '$lib/components/ui/Table.svelte';
-	import TableDraftRow from '$lib/components/ui/TableDraftRow.svelte';
 	import TableSection from '$lib/components/ui/TableSection.svelte';
 	import MetricInput from '$lib/components/ui/forms/MetricInput.svelte';
 	import RatioInput from '$lib/components/ui/forms/RatioInput.svelte';
@@ -515,18 +513,12 @@
 		}
 	}
 
-	async function saveModelDraft(id: string) {
-		const draft = modelDrafts.find((candidate) => candidate.id === id);
-		if (!draft || draft.busy) return;
-		updateModelDraft(id, { validationAttempt: draft.validationAttempt + 1 });
-		if (!draft.brand.trim() || !draft.name.trim()) {
-			updateModelDraft(id, { error: 'Renseignez la marque et le nom.' });
-			return;
-		}
-
-		updateModelDraft(id, { busy: true, error: '' });
+	async function saveModel() {
+		if (!modelForm.brand.trim() || !modelForm.name.trim()) return;
+		saving = true;
+		error = '';
 		try {
-			const result = await gql<{ createMachineModel: MachineModel }>(
+			await gql<{ createMachineModel: MachineModel }>(
 				`mutation($input: MachineModelInput!) {
 					createMachineModel(input: $input) {
 						id brand name
@@ -536,17 +528,14 @@
 						hasCarbonFilter
 					}
 				}`,
-				{ input: modelInput(draft) }
+				{ input: modelInput(modelForm) }
 			);
-			updateModelDraft(id, { animateRemoval: false });
-			await tick();
-			cancelModelDraft(id);
-			models = [result.createMachineModel, ...models];
+			closeModal();
+			await invalidateAll();
 		} catch (cause) {
-			updateModelDraft(id, {
-				busy: false,
-				error: cause instanceof Error ? cause.message : 'Impossible de créer le modèle.'
-			});
+			error = cause instanceof Error ? cause.message : 'Impossible de créer le modèle.';
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -975,9 +964,6 @@
 			</section>
 			<TableSection title="Parc">
 				{#snippet toolbar()}
-					<Button variant="outlined" tone="surface" size="sm" onclick={openModelManager}>
-						Voir les modèles
-					</Button>
 					<Button
 						tone="tertiary"
 						size="sm"
@@ -1276,36 +1262,12 @@
 		</Modal>
 	{/if}
 
-	{#if activeModal === 'models'}
-		<Modal
-			open={true}
-			onOpenChange={handleModalChange}
-			contentClasses="max-h-[88vh] w-[min(94vw,82rem)] max-w-none overflow-y-auto rounded-container bg-surface-100-900 p-6 shadow-xl max-[600px]:p-4"
-		>
-			{#snippet content()}
-				<div class="mb-4 flex items-start justify-between gap-4 px-1">
-					<div>
-						<div class="flex flex-wrap items-center gap-2.5">
-							<h2 class="text-2xl font-semibold text-surface-900-100">Référentiel</h2>
-							<Badge small tonal surface
-								>{models.length} {models.length === 1 ? 'modèle' : 'modèles'}</Badge
-							>
-						</div>
-						<p class="mt-1 text-sm text-surface-700-300">
-							Gérez les caractéristiques communes à vos machines.
-						</p>
-					</div>
-					<button
-						class="btn-icon shrink-0 preset-tonal-surface"
-						type="button"
-						aria-label="Fermer"
-						onclick={closeModal}><X size={18} /></button
-					>
-				</div>
-				{#if error}<p class="mb-4 rounded-base preset-tonal-error p-3" role="alert">{error}</p>{/if}
-				<TableSection title="Modèles de machines" class="shadow-md">
+	<TableSection
+		title="Modèles de machines"
+		description="Caractéristiques communes aux machines physiques du parc."
+	>
 					{#snippet toolbar()}
-						<Button tone="tertiary" size="sm" onclick={addModelDraft}>
+						<Button tone="tertiary" size="sm" onclick={openModelForm}>
 							<Plus size={16} />Nouveau modèle
 						</Button>
 					{/snippet}
@@ -1323,85 +1285,6 @@
 							</tr>
 						</thead>
 						<tbody>
-							{#each modelDrafts as draft (draft.id)}
-								<TableDraftRow animateRemoval={draft.animateRemoval}>
-									<td data-label="" class="mobile-card-hidden"
-										><Badge small tonal tertiary>Nouveau</Badge></td
-									>
-									<td data-label="Marque">
-										<Input
-											required
-											requiredFeedback={RequiredFeedback.None}
-											invalid={Boolean(draft.error && !draft.brand.trim())}
-											validationAttempt={draft.validationAttempt}
-											bind:value={draft.brand}
-											disabled={draft.busy}
-											aria-label="Marque du nouveau modèle"
-										/>
-									</td>
-									<td data-label="Modèle">
-										<Input
-											required
-											requiredFeedback={RequiredFeedback.None}
-											invalid={Boolean(draft.error && !draft.name.trim())}
-											validationAttempt={draft.validationAttempt}
-											bind:value={draft.name}
-											disabled={draft.busy}
-											aria-label="Nom du nouveau modèle"
-										/>
-									</td>
-									<td data-label="Maintenance"
-										><RatioInput
-											label="Coût de maintenance"
-											labelVisible={false}
-											required
-											bind:value={draft.maintenanceCostValue}
-											numeratorUnit="€"
-											numeratorUnits={priceUnits}
-											denominatorUnits={yearUnits}
-										/></td
-									>
-									<td data-label="Durée de vie"
-										><MetricInput
-											label="Durée de vie"
-											labelVisible={false}
-											required
-											bind:value={draft.lifetimeValue}
-											units={yearUnits}
-										/></td
-									>
-									<td data-label="Puissance"
-										><MetricInput
-											label="Puissance moyenne"
-											labelVisible={false}
-											required
-											bind:value={draft.averagePowerValue}
-											units={wattUnits}
-										/></td
-									>
-									<td data-label="Filtre">
-										<Checkbox
-											bind:checked={draft.hasCarbonFilter}
-											aria-label="Filtre à charbon"
-										/>
-									</td>
-									<td data-label="Machines">—</td>
-									<td data-label="" class="mobile-card-actions">
-										<IconAction
-											label="Créer le modèle"
-											tone="success"
-											disabled={draft.busy}
-											onclick={() => saveModelDraft(draft.id)}><Check size={18} /></IconAction
-										>
-										<IconAction
-											label="Annuler la création"
-											tone="error"
-											disabled={draft.busy}
-											onclick={() => cancelModelDraft(draft.id)}><X size={18} /></IconAction
-										>
-									</td>
-								</TableDraftRow>
-							{/each}
 							{#each models as model, index (model.id)}
 								{@const machineCount = modelMachineCounts[model.id] ?? 0}
 								<tr>
@@ -1506,15 +1389,80 @@
 									</td>
 								</tr>
 							{:else}
-								{#if modelDrafts.length === 0}<tr
-										><td colspan="9" class="py-10 text-center text-surface-700-300"
-											>Aucun modèle.</td
-										></tr
-									>{/if}
+								<tr><td colspan="9" class="py-10 text-center text-surface-700-300">Aucun modèle.</td></tr>
 							{/each}
 						</tbody>
 					</Table>
-				</TableSection>
+	</TableSection>
+
+	{#if activeModal === 'new-model'}
+		<Modal
+			open={true}
+			onOpenChange={handleModalChange}
+			contentClasses="w-full max-w-3xl rounded-container border border-surface-300-700 bg-surface-50-950 p-7 shadow-xl max-[600px]:p-5"
+		>
+			{#snippet content()}
+				<div class="mb-6 flex items-start justify-between gap-4">
+					<div>
+						<p class="mb-1 text-xs font-semibold tracking-wider text-surface-700-300 uppercase">
+							Référentiel
+						</p>
+						<h2 class="text-2xl font-semibold text-surface-900-100">Nouveau modèle</h2>
+					</div>
+					<button
+						class="btn-icon preset-tonal-surface"
+						type="button"
+						aria-label="Fermer"
+						onclick={closeModal}><X size={18} /></button
+					>
+				</div>
+				<form
+					onsubmit={(event) => {
+						event.preventDefault();
+						saveModel();
+					}}
+					class="grid gap-5"
+				>
+					<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
+						<label class="label">Marque<Input required bind:value={modelForm.brand} /></label>
+						<label class="label">Modèle<Input required bind:value={modelForm.name} /></label>
+					</div>
+					<div class="grid grid-cols-3 items-end gap-3 max-[700px]:grid-cols-1">
+						<RatioInput
+							label="Coût de maintenance"
+							required
+							requiredFeedback={RequiredFeedback.Full}
+							bind:value={modelForm.maintenanceCostValue}
+							numeratorUnit="€"
+							numeratorUnits={priceUnits}
+							denominatorUnits={yearUnits}
+						/>
+						<MetricInput
+							label="Durée de vie"
+							required
+							requiredFeedback={RequiredFeedback.Full}
+							bind:value={modelForm.lifetimeValue}
+							units={yearUnits}
+						/>
+						<MetricInput
+							label="Puissance moyenne"
+							required
+							requiredFeedback={RequiredFeedback.Full}
+							bind:value={modelForm.averagePowerValue}
+							units={wattUnits}
+						/>
+					</div>
+					<label class="flex min-h-11 items-center gap-3 text-sm text-surface-900-100">
+						<Checkbox bind:checked={modelForm.hasCarbonFilter} /> Filtre à charbon
+					</label>
+					{#if error}<p class="rounded-base preset-tonal-error p-3 text-sm" role="alert">{error}</p>{/if}
+					<div class="flex justify-end gap-2.5 border-t border-surface-300-700 pt-5">
+						<Button variant="outlined" tone="secondary" type="button" onclick={closeModal}>Annuler</Button>
+						<Button type="submit" tone="tertiary" disabled={saving}
+							>{saving ? 'Création…' : 'Créer le modèle'}</Button
+						>
+					</div>
+				</form>
 			{/snippet}
 		</Modal>
 	{/if}
