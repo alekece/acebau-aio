@@ -53,7 +53,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 				printingTimeSinceMaintenance { value unit }
 			}
 			machineMaintenanceHistoryFor(machineId: $id, page: $page, pageSize: 10) {
-				id machineId kind performedAt printingTime { value unit } notes
+				items { id machineId kind performedAt printingTime { value unit } notes }
 				page pageSize totalItems totalPages
 			}
 		}`,
