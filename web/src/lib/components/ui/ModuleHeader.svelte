@@ -2,6 +2,7 @@
 	import ArrowLeft from '@lucide/svelte/icons/arrow-left';
 	import Plus from '@lucide/svelte/icons/plus';
 	import type { Snippet } from 'svelte';
+	import Button from './Button.svelte';
 
 	let {
 		title,
@@ -40,9 +41,10 @@
 	</div>
 	{#if actions}
 		<div class="flex flex-wrap items-center gap-2 max-[760px]:w-full">{@render actions()}</div>
-	{:else if action}<button
+	{:else if action}<Button
 			type="button"
-			class="btn preset-filled-tertiary-500 btn-lg"
-			onclick={() => onAction?.()}><Plus size={17} />{action}</button
+			size="lg"
+			tone="tertiary"
+			onclick={() => onAction?.()}><Plus size={17} />{action}</Button
 		>{/if}
 </header>

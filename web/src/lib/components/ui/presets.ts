@@ -92,6 +92,7 @@ export const sizeGroup: ExclusiveGroup<Size> = {
  * @description This enum defines the tone for components.
  */
 export enum Tone {
+	Brand = 'brand',
 	Primary = 'primary',
 	Secondary = 'secondary',
 	Tertiary = 'tertiary',
@@ -104,6 +105,7 @@ export enum Tone {
 export const toneGroup: ExclusiveGroup<Tone> = {
 	candidates: [
 		['tone', (v) => v as Tone],
+		['brand', Tone.Brand],
 		['primary', Tone.Primary],
 		['secondary', Tone.Secondary],
 		['tertiary', Tone.Tertiary],
@@ -112,6 +114,29 @@ export const toneGroup: ExclusiveGroup<Tone> = {
 		['error', Tone.Error],
 		['surface', Tone.Surface]
 	]
+};
+
+/*
+ * Skeleton provides shade pairs for filled and outlined presets. The first
+ * value is used in light mode and the second in dark mode.
+ */
+export enum Shade {
+	Default = '500',
+	Lightest = '50-950',
+	Lighter = '100-900',
+	Light = '200-800',
+	Soft = '300-700',
+	Muted = '400-600',
+	MutedInverse = '600-400',
+	SoftInverse = '700-300',
+	Dark = '800-200',
+	Darker = '900-100',
+	Darkest = '950-50'
+}
+
+export const shadeGroup: ExclusiveGroup<Shade> = {
+	fallback: Shade.Default,
+	candidates: [['shade', (value) => value as Shade]]
 };
 
 /*
@@ -137,5 +162,18 @@ export const variantGroup: ExclusiveGroup<Variant> = {
 export const presetGroups = {
 	size: sizeGroup,
 	variant: variantGroup,
-	tone: toneGroup
+	tone: toneGroup,
+	shade: shadeGroup
 };
+
+/** Returns the exact utility name exposed by Skeleton's preset stylesheet. */
+export function presetClass(
+	variant: Variant | `${Variant}`,
+	tone?: Tone | `${Tone}` | null,
+	shade: Shade | `${Shade}` = Shade.Default
+): string {
+	if (!tone) return `preset-${variant}`;
+	if (tone === Tone.Brand) return `preset-${variant}-brand`;
+	if (variant === Variant.Tonal) return `preset-${variant}-${tone}`;
+	return `preset-${variant}-${tone}-${shade}`;
+}

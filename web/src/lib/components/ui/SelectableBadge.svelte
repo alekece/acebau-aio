@@ -84,18 +84,13 @@
 							class={itemClass}
 						>
 							<Menu.ItemText>
-								{#if value === option.value}
-									<Badge variant="tonal" tone={option.tone} class={badgeClass}>
-										{#snippet icon()}
-											<span class="size-2 rounded-full bg-current" aria-hidden="true"></span>
-										{/snippet}
-										{option.label}
-									</Badge>
-								{:else}
-									<Badge variant="tonal" tone={option.tone} class={badgeClass}>
-										{option.label}
-									</Badge>
-								{/if}
+								<Badge
+									variant="tonal"
+									tone={option.tone}
+									class="{badgeClass} {value === option.value ? 'font-bold' : ''}"
+								>
+									{option.label}
+								</Badge>
 							</Menu.ItemText>
 						</Menu.OptionItem>
 					{/each}

@@ -17,6 +17,7 @@
 		hint = '',
 		min = '0',
 		step = 'any',
+		disabled = false,
 		required = false,
 		requiredFeedback = RequiredFeedback.None,
 		labelVisible = true
@@ -30,6 +31,7 @@
 		hint?: string;
 		min?: string | number;
 		step?: number | 'any';
+		disabled?: boolean;
 		required?: boolean;
 		requiredFeedback?: RequiredFeedback;
 		labelVisible?: boolean;
@@ -105,6 +107,7 @@
 			inputmode="decimal"
 			aria-invalid={touched && validationMessage ? 'true' : undefined}
 			{required}
+			{disabled}
 			{value}
 			oninput={updateValue}
 			onfocus={() => (touched = false)}
@@ -123,6 +126,7 @@
 				class={`select min-w-20 !rounded-l-none border !border-l-0 bg-surface-100-900 py-2 pr-8 pl-2.5 font-medium text-surface-950-50 shadow-none focus:z-10 focus:ring-0 ${touched && validationMessage ? 'border-error-500 focus:border-error-500' : 'border-surface-300-700 focus:border-tertiary-500'}`}
 				aria-label={`Unité pour ${label}`}
 				value={resolvedUnit}
+				{disabled}
 				onchange={updateUnit}
 			>
 				{#each units as option (option.value)}<option value={option.value}>{option.label}</option

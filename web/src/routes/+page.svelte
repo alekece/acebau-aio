@@ -54,6 +54,7 @@
 
 	function softTone(tone: Tone): string {
 		return {
+			[Tone.Brand]: 'bg-primary-100-900 text-primary-500',
 			[Tone.Success]: 'bg-success-50-950 text-success-500',
 			[Tone.Warning]: 'bg-warning-50-950 text-warning-500',
 			[Tone.Error]: 'bg-error-50-950 text-error-500',
@@ -66,6 +67,7 @@
 
 	function dotTone(tone: Tone): string {
 		return {
+			[Tone.Brand]: 'bg-primary-500',
 			[Tone.Success]: 'bg-success-500',
 			[Tone.Warning]: 'bg-warning-500',
 			[Tone.Error]: 'bg-error-500',

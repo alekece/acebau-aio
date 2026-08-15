@@ -1,31 +1,28 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { HTMLAnchorAttributes } from 'svelte/elements';
-
-	type Size = 'sm' | 'base' | 'lg';
-	type Variant = 'filled' | 'tonal' | 'outlined';
-	type Tone = 'primary' | 'secondary' | 'tertiary' | 'success' | 'warning' | 'error' | 'surface';
+	import { presetClass, Shade, Size, Tone, Variant } from './presets';
 	type Props = Omit<HTMLAnchorAttributes, 'class'> & {
 		children: Snippet;
 		class?: string;
-		size?: Size;
-		variant?: Variant;
-		tone?: Tone;
+		size?: Size | `${Size}`;
+		variant?: Variant | `${Variant}`;
+		tone?: Tone | `${Tone}`;
+		shade?: Shade | `${Shade}`;
 	};
 
 	let {
 		children,
 		class: className = '',
-		size = 'base',
-		variant = 'filled',
+		size = Size.Medium,
+		variant = Variant.Filled,
 		tone,
+		shade = Shade.Default,
 		onclick,
 		...rest
 	}: Props = $props();
 
-	let preset = $derived(
-		`preset-${variant}${tone ? (variant === 'tonal' ? `-${tone}` : `-${tone}-500`) : ''}`
-	);
+	let preset = $derived(presetClass(variant, tone, shade));
 </script>
 
 <a {onclick} class="btn btn-{size} {preset} {className}" {...rest}>

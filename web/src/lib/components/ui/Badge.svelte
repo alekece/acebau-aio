@@ -3,7 +3,9 @@
 	import type { HTMLAttributes } from 'svelte/elements';
 	import {
 		consumeExclusiveGroups,
+		presetClass,
 		presetGroups,
+		type Shade,
 		type Size,
 		type Tone,
 		type Variant
@@ -22,6 +24,8 @@
 		tonal?: boolean;
 		outlined?: boolean;
 		tone?: Tone | string | null;
+		shade?: Shade | `${Shade}`;
+		brand?: boolean;
 		primary?: boolean;
 		secondary?: boolean;
 		tertiary?: boolean;
@@ -39,14 +43,13 @@
 	let size = $derived(normalized.normalizedProps.size);
 	let variant = $derived(normalized.normalizedProps.variant);
 	let tone = $derived(normalized.normalizedProps.tone);
+	let shade = $derived(normalized.normalizedProps.shade);
 	let rest = $derived.by(() => {
 		const { children: _children, class: _class, icon: _icon, ...attributes } = normalized.rest;
 		return attributes;
 	});
 
-	let preset = $derived(
-		`preset-${variant}${tone ? (variant === 'tonal' ? `-${tone}` : `-${tone}-500`) : ''}`
-	);
+	let preset = $derived(presetClass(variant ?? 'filled', tone, shade));
 	let badgeSize = $derived(
 		size === 'sm' ? 'var(--text-xs)' : size === 'lg' ? 'var(--text-base)' : 'var(--text-sm)'
 	);
