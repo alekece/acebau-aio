@@ -284,14 +284,14 @@ Shipping packaging is not part of the product recipe and is consumed during ship
 
 ### 5.7 Printed-piece machine profile
 
-For each compatible piece and machine:
+For each compatible piece, machine model and nozzle diameter:
 
 - Printing time for one piece.
 - Estimated filament consumption for one piece, expressed as mass only. Material, colour and physical spool are not selected in the machine profile; the material/colour belongs to the variant recipe and the physical spool is selected during production.
 - Maximum accepted pieces on one build plate.
 - Quality rating or note.
-- Preferred-machine flag.
-- Excluded-machine flag.
+- Preferred-machine-model flag.
+- Excluded-machine-model flag.
 
 If several pieces are printed on a plate, time and filament are estimated by multiplying the per-piece values by the number of pieces. The number of print runs is `ceil(required pieces / build-plate capacity)`.
 
@@ -470,7 +470,7 @@ The recipe is proposed by default, but actual quantities remain editable before 
 - Temporarily unavailable.
 - Archived.
 
-Machine records contain model, purchase and cost information, compatible profiles, effective hourly cost, total recorded printing hours and maintenance notes.
+Machine records contain model, current nozzle diameter, purchase and cost information, compatible profiles, effective hourly cost, total recorded printing hours and maintenance notes.
 
 ### 7.5 Advisory selection
 
@@ -888,7 +888,7 @@ The selected variant controls its gallery, professional HT price, recommended re
 
 **Content:** searchable table with piece name/reference, machine-profile coverage, reference or average printing time, average filament consumption, recent success rate and row actions. There is no reusable/product-specific scope field and no expanded profile sublist on the overview page.
 
-The list shows a reference or average printing time and filament consumption. Machine profiles are edited from piece creation or editing, rather than expanded as a large child list in the overview. The profile contains printing time, filament consumption, accepted pieces per build plate, preferred-machine selector and exclusion checkbox. Capacity always belongs to the piece-machine profile. For example, an XL lampshade can have capacity 1 and K2 Plus preferred while smaller machines are excluded. At most one compatible machine may be preferred; an excluded machine cannot also be preferred.
+The list shows a reference or average printing time and filament consumption. Machine profiles are edited from piece creation or editing, rather than expanded as a large child list in the overview. The profile contains a machine model, nozzle diameter, printing time, filament consumption, accepted pieces per build plate, preferred-machine-model selector and exclusion checkbox. Capacity always belongs to the piece-machine-model-nozzle profile. For example, an XL lampshade can have capacity 1 and K2 Plus preferred while smaller machine models are excluded. At most one compatible machine-model and nozzle profile may be preferred; an excluded profile cannot also be preferred.
 
 **Primary actions:** create, edit, manage machine profiles, archive and conditionally delete. `New piece` is a split action with `Create blank` and `From an existing piece`; duplication is not a separate page-level action.
 

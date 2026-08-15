@@ -25,7 +25,7 @@ Do not duplicate or reinterpret those documents here. They are the sources of tr
 - Prefer separation of concerns and expose simple interfaces that compose those concerns when needed.
 - Add or update tests for changed behavior when appropriate.
 - Run the relevant formatting, linting, compilation and tests before considering work complete.
-- Add database migrations for schema changes. Never modify historical migrations to represent a new change.
+- Before changing the database schema, ask whether to add a migration or modify/consolidate the current migration files. Never make that choice silently.
 - Never silently perform destructive operations or data loss.
 - Never commit secrets, credentials, tokens, passwords, or deployment-specific sensitive values.
 
