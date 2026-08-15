@@ -6,7 +6,7 @@ use strum::{Display, EnumString};
 use uuid::Uuid;
 
 use acebau_unit::metric::TimeUnit;
-use acebau_unit::{Decimal, Power, Price, PricePerTime, Time};
+use acebau_unit::{Decimal, Length, Power, Price, PricePerTime, Time};
 
 const DEFAULT_MACHINE_USAGE: Decimal = Decimal::from_parts(5, 0, 0, false, 1);
 
@@ -49,6 +49,7 @@ pub struct Machine {
     pub model_id: Uuid,
     pub surname: String,
     pub purchase_cost: Price,
+    pub nozzle_size: Length,
     pub printing_time: Time,
     pub state: MachineState,
 }

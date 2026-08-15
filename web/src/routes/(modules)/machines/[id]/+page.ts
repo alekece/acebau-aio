@@ -16,6 +16,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 			surname: 'Machine indisponible',
 			modelId: '',
 			purchaseCost: { value: '0', unit: '€' },
+			nozzleSize: { value: '0.4', unit: 'mm' },
 			printingTime: { value: '0', unit: 'h' },
 			usageCost: { value: '0', numeratorUnit: '€', denominatorUnit: 'h' },
 			state: 'available',
@@ -36,7 +37,7 @@ export const load: PageLoad = async ({ fetch, params, url }) => {
 		fetch,
 		`query MachineDetail($id: String!, $page: Int!) {
 			machine(id: $id) {
-				id surname modelId purchaseCost { value unit } printingTime { value unit }
+				id surname modelId purchaseCost { value unit } nozzleSize { value unit } printingTime { value unit }
 				usageCost { value numeratorUnit denominatorUnit } state
 				model {
 					id brand name

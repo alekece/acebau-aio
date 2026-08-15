@@ -25,6 +25,11 @@
 		return `${metric.value} ${metric.unit}`;
 	}
 
+	function nozzleLabel(nozzleSize: MetricDTO<Unit>) {
+		const millimeters = Metric.from(nozzleSize).convertTo('mm').value.toFixed(1).replace('.', ',');
+		return `${millimeters} mm`;
+	}
+
 	function ratioLabel(ratio: RatioDTO<PriceUnit, TimeUnit>) {
 		const yearly = Ratio.from(ratio).convertTo('€', 'y');
 		return `${yearly.value.toDecimalPlaces(2).toString()} €/année`;
@@ -84,6 +89,10 @@
 					<div>
 						<dt class="text-sm text-surface-700-300">Prix d’achat</dt>
 						<dd class="mt-1 font-semibold">{metricLabel(data.machine.purchaseCost)}</dd>
+					</div>
+					<div>
+						<dt class="text-sm text-surface-700-300">Buse actuelle</dt>
+						<dd class="mt-1 font-semibold">{nozzleLabel(data.machine.nozzleSize)}</dd>
 					</div>
 					<div>
 						<dt class="text-sm text-surface-700-300">Temps d’impression enregistré</dt>

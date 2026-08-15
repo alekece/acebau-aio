@@ -16,6 +16,7 @@
 	import EmptyState from '$lib/components/ui/EmptyState.svelte';
 	import IconAction from '$lib/components/ui/IconAction.svelte';
 	import Input from '$lib/components/ui/forms/Input.svelte';
+	import Checkbox from '$lib/components/ui/forms/Checkbox.svelte';
 	import Modal from '$lib/components/ui/Modal.svelte';
 	import MachineStatus from '$lib/components/machines/MachineStatus.svelte';
 	import MachineMaintenanceOverview from '$lib/components/machines/MachineMaintenanceOverview.svelte';
@@ -73,22 +74,12 @@
 		modelId: string;
 		surname: string;
 		purchaseCost: string;
+		nozzleSize: string;
 	};
 	type ModelRowForm = ModelForm & {
 		busy: boolean;
 		error: string;
 		validationAttempt: number;
-	};
-	type ModelDraft = ModelRowForm & {
-		id: string;
-		animateRemoval: boolean;
-	};
-	type MachineDraft = MachineForm & {
-		id: string;
-		busy: boolean;
-		error: string;
-		validationAttempt: number;
-		animateRemoval: boolean;
 	};
 
 	let { data }: PageProps = $props();
@@ -106,7 +97,7 @@
 	let saving = $state(false);
 	let error = $state('');
 	type ModalKind =
-		| 'models'
+		| 'new-model'
 		| 'new-machine'
 		| 'machine-settings'
 		| 'record-maintenance'
@@ -123,17 +114,14 @@
 			{
 				modelId: string;
 				surname: string;
-				purchaseCost: string;
-				state: Machine['state'];
+				nozzleSize: string;
+				state: MachineState;
 				busy: boolean;
 				error: string;
 			}
 		>
 	>({});
-	let machineDrafts = $state<MachineDraft[]>([]);
-	let modelDrafts = $state<ModelDraft[]>([]);
 	let modelEdits = $state<Record<string, ModelRowForm>>({});
-	let pinnedMachineIds = $state<string[]>([]);
 	let maintenanceSettings = $state<MachineMaintenanceSetting[]>([]);
 	let maintenanceHistory = $state<MachineMaintenancePage>({
 		items: [],
@@ -148,7 +136,7 @@
 	let maintenancePerformedAt = $state('');
 	let maintenanceForm = $state<Record<string, { due: string; critical: string }>>({});
 	let hasUnsavedTableRows = $derived(
-		machineDrafts.length > 0 || Object.keys(machineEdits).length > 0
+		Object.keys(machineEdits).length > 0 || Object.keys(modelEdits).length > 0
 	);
 
 	$effect(() => {
@@ -186,6 +174,7 @@
 	const priceUnits = [{ value: '€', label: '€' }];
 	const yearUnits = [{ value: 'y', label: 'année' }];
 	const wattUnits = [{ value: 'W', label: 'W' }];
+	const millimeterUnits = [{ value: 'mm', label: 'mm' }];
 
 	function emptyModel(): ModelForm {
 		return {
@@ -200,6 +189,19 @@
 
 	function metricLabel(metric: MetricDTO) {
 		return `${metric.value}${metric.unit}`;
+	}
+
+	function nozzleLabel(nozzleSize: MetricDTO) {
+		const millimeters = Metric.from(nozzleSize).convertTo('mm').value.toFixed(1).replace('.', ',');
+		return `${millimeters} mm`;
+	}
+
+	function nozzleValueLabel(value: string) {
+		try {
+			return `${new Decimal(value).toFixed(1).replace('.', ',')} mm`;
+		} catch {
+			return `${value} mm`;
+		}
 	}
 
 	function ratioLabel(ratio: RatioDTO<PriceUnit, TimeUnit>) {
@@ -238,7 +240,7 @@
 	}
 
 	function emptyMachine(): MachineForm {
-		return { modelId: '', surname: '', purchaseCost: '' };
+		return { modelId: '', surname: '', purchaseCost: '', nozzleSize: '0.4' };
 	}
 
 	async function gql<T>(query: string, variables: Record<string, unknown> = {}): Promise<T> {
@@ -268,14 +270,12 @@
 		pageLoading = true;
 		error = '';
 		try {
-			machineDrafts = [];
 			machineEdits = {};
-			pinnedMachineIds = [];
 			const result = await gql<{ machines: MachinePage }>(
 				`query MachineTablePage($page: Int!, $pageSize: Int!) {
 					machines(page: $page, pageSize: $pageSize) {
 						items {
-							id surname modelId purchaseCost { value unit } printingTime { value unit }
+							id surname modelId purchaseCost { value unit } nozzleSize { value unit } printingTime { value unit }
 							usageCost { value numeratorUnit denominatorUnit } state
 							model {
 								id brand name
@@ -339,11 +339,10 @@
 		maintenanceHistory = result.machineMaintenanceHistory;
 	}
 
-	function openModelManager() {
-		modelDrafts = [];
-		modelEdits = {};
+	function openModelForm() {
+		modelForm = emptyModel();
 		error = '';
-		activeModal = 'models';
+		activeModal = 'new-model';
 	}
 
 	function modelRowForm(model: MachineModel): ModelRowForm {
@@ -361,28 +360,6 @@
 			error: '',
 			validationAttempt: 0
 		};
-	}
-
-	function addModelDraft() {
-		modelDrafts = [
-			{
-				...emptyModel(),
-				id: crypto.randomUUID(),
-				busy: false,
-				error: '',
-				validationAttempt: 0,
-				animateRemoval: true
-			},
-			...modelDrafts
-		];
-	}
-
-	function updateModelDraft(id: string, changes: Partial<ModelDraft>) {
-		modelDrafts = modelDrafts.map((draft) => (draft.id === id ? { ...draft, ...changes } : draft));
-	}
-
-	function cancelModelDraft(id: string) {
-		modelDrafts = modelDrafts.filter((draft) => draft.id !== id);
 	}
 
 	function beginModelEdit(model: MachineModel) {
@@ -403,90 +380,6 @@
 	function openMachineForm() {
 		machineForm = { ...emptyMachine(), modelId: models[0]?.id ?? '' };
 		activeModal = 'new-machine';
-	}
-
-	function addMachineDraft() {
-		machineDrafts = [
-			{
-				...emptyMachine(),
-				id: crypto.randomUUID(),
-				modelId: models[0]?.id ?? '',
-				busy: false,
-				error: '',
-				validationAttempt: 0,
-				animateRemoval: true
-			},
-			...machineDrafts
-		];
-	}
-
-	function cancelMachineDraft(id: string) {
-		machineDrafts = machineDrafts.filter((draft) => draft.id !== id);
-	}
-
-	function updateMachineDraft(id: string, changes: Partial<MachineDraft>) {
-		machineDrafts = machineDrafts.map((draft) =>
-			draft.id === id ? { ...draft, ...changes } : draft
-		);
-	}
-
-	async function saveMachineDraft(id: string) {
-		const draft = machineDrafts.find((candidate) => candidate.id === id);
-		if (!draft || draft.busy) return;
-		updateMachineDraft(id, { validationAttempt: draft.validationAttempt + 1 });
-		if (!draft.modelId || !draft.surname.trim() || !draft.purchaseCost.trim()) {
-			updateMachineDraft(id, { error: 'Renseignez le modèle, le surnom et le prix d’achat.' });
-			return;
-		}
-
-		updateMachineDraft(id, { busy: true, error: '' });
-		try {
-			const result = await gql<{ createMachine: Machine }>(
-				`mutation($input: MachineInput!) {
-					createMachine(input: $input) {
-						id surname modelId purchaseCost { value unit } printingTime { value unit }
-						usageCost { value numeratorUnit denominatorUnit } state
-						model {
-							id brand name
-							maintenanceCost { value numeratorUnit denominatorUnit }
-							lifetime { value unit }
-							averagePower { value unit }
-							hasCarbonFilter
-						}
-					}
-				}`,
-				{
-					input: {
-						modelId: draft.modelId,
-						surname: draft.surname.trim(),
-						purchaseCost: { value: draft.purchaseCost, unit: '€' },
-						printingTime: { value: '0', unit: 'h' },
-						state: 'available'
-					}
-				}
-			);
-
-			updateMachineDraft(id, { animateRemoval: false });
-			await tick();
-			cancelMachineDraft(id);
-			machines = [result.createMachine, ...machines].slice(0, machinePage.pageSize);
-			modelMachineCounts = {
-				...modelMachineCounts,
-				[draft.modelId]: (modelMachineCounts[draft.modelId] ?? 0) + 1
-			};
-			pinnedMachineIds = [result.createMachine.id, ...pinnedMachineIds];
-			const totalItems = machinePage.totalItems + 1;
-			machinePage = {
-				...machinePage,
-				totalItems,
-				totalPages: Math.ceil(totalItems / machinePage.pageSize)
-			};
-		} catch (cause) {
-			updateMachineDraft(id, {
-				busy: false,
-				error: cause instanceof Error ? cause.message : 'Impossible de créer la machine.'
-			});
-		}
 	}
 
 	function requestDeleteMachine(machine: Machine) {
@@ -707,6 +600,7 @@
 					...machineForm,
 					state: 'available',
 					purchaseCost: { value: machineForm.purchaseCost, unit: '€' },
+					nozzleSize: { value: machineForm.nozzleSize, unit: 'mm' },
 					modelId: result.createMachineModel.id,
 					printingTime: { value: '0', unit: 'h' }
 				}
@@ -729,6 +623,7 @@
 					...machineForm,
 					state: 'available',
 					purchaseCost: { value: machineForm.purchaseCost, unit: '€' },
+					nozzleSize: { value: machineForm.nozzleSize, unit: 'mm' },
 					printingTime: { value: '0', unit: 'h' }
 				}
 			});
@@ -794,7 +689,7 @@
 			[machine.id]: {
 				modelId: machine.modelId,
 				surname: machine.surname,
-				purchaseCost: Metric.from(machine.purchaseCost).convertTo('€').value.toString(),
+				nozzleSize: Metric.from(machine.nozzleSize).convertTo('mm').value.toString(),
 				state: machine.state,
 				busy: false,
 				error: ''
@@ -810,13 +705,12 @@
 
 	function updateInlineMachineState(id: string, state: MachineState) {
 		const edit = machineEdits[id];
-		if (!edit) return;
-		machineEdits = { ...machineEdits, [id]: { ...edit, state } };
+		if (edit) machineEdits = { ...machineEdits, [id]: { ...edit, state } };
 	}
 
 	async function saveInlineMachine(id: string) {
 		const edit = machineEdits[id];
-		if (!edit?.surname.trim() || !edit.purchaseCost.trim()) return;
+		if (!edit?.surname.trim() || !edit.nozzleSize.trim()) return;
 		machineEdits = { ...machineEdits, [id]: { ...edit, busy: true, error: '' } };
 		try {
 			await gql(
@@ -826,7 +720,7 @@
 					input: {
 						modelId: edit.modelId,
 						surname: edit.surname.trim(),
-						purchaseCost: { value: edit.purchaseCost, unit: '€' },
+						nozzleSize: { value: edit.nozzleSize, unit: 'mm' },
 						state: edit.state
 					}
 				}
@@ -931,10 +825,6 @@
 									denominatorUnits={yearUnits}
 								/>
 							</div>
-							<label class="col-span-6 flex items-center gap-2 text-sm text-surface-700-300">
-								<input class="checkbox" type="checkbox" bind:checked={modelForm.hasCarbonFilter} />
-								Le modèle possède un filtre à charbon
-							</label>
 							<div class="col-span-2 max-[600px]:col-span-6">
 								<MetricInput
 									label="Durée de vie"
@@ -953,6 +843,10 @@
 									units={wattUnits}
 								/>
 							</div>
+							<label class="col-span-6 flex items-center gap-2 text-sm text-surface-700-300">
+								<Checkbox bind:checked={modelForm.hasCarbonFilter} />
+								Filtre à charbon
+							</label>
 						</div>
 						<div class="flex justify-end border-t border-surface-300-700 pt-5">
 							<Button type="submit" tone="tertiary">Continuer</Button>
@@ -974,7 +868,7 @@
 								Donnez-lui un nom pour la retrouver facilement dans votre parc.
 							</p>
 						</div>
-						<div class="grid grid-cols-2 gap-3 max-[600px]:grid-cols-1">
+						<div class="grid grid-cols-3 gap-3 max-[600px]:grid-cols-1">
 							<label class="label"
 								>Surnom<Input
 									required
@@ -982,12 +876,20 @@
 									placeholder="Ex. K2 du fond"
 								/></label
 							><MetricInput
-								label="Prix d’achat réel"
+								label="Prix d’achat"
 								required
 								requiredFeedback={RequiredFeedback.Full}
 								bind:value={machineForm.purchaseCost}
 								unit="€"
 								units={priceUnits}
+							/>
+							<MetricInput
+								label="Buse"
+								required
+								requiredFeedback={RequiredFeedback.Full}
+								bind:value={machineForm.nozzleSize}
+								unit="mm"
+								units={millimeterUnits}
 							/>
 						</div>
 						<div class="flex justify-between gap-2.5">
@@ -1026,7 +928,7 @@
 								</p>
 								<strong class="block text-base text-surface-900-100">{machineForm.surname}</strong
 								><small class="text-surface-700-300"
-									>{machineStateLabel('available')} · {machineForm.purchaseCost}€</small
+									>{machineStateLabel('available')} · buse {nozzleValueLabel(machineForm.nozzleSize)} · {machineForm.purchaseCost}€</small
 								>
 							</div>
 						</div>
@@ -1079,7 +981,7 @@
 					<Button
 						tone="tertiary"
 						size="sm"
-						onclick={addMachineDraft}
+						onclick={openMachineForm}
 						disabled={models.length === 0}
 					>
 						<Plus size={16} />Nouvelle machine
@@ -1094,103 +996,29 @@
 					totalItems={machinePage.totalItems}
 					totalPages={machinePage.totalPages}
 					onPageChange={loadMachinePage}
-					class="min-w-[66rem] table-fixed"
+					class="min-w-[64rem] table-fixed"
 				>
 					<colgroup>
-						<col class="w-24" />
-						<col class="w-42" />
-						<col class="w-40" />
-						<col class="w-38" />
-						<col class="w-32" />
-						<col class="w-28" />
-						<col class="w-40" />
+						<col class="w-16" />
 						<col class="w-36" />
+						<col class="w-40" />
+						<col class="w-28" />
+						<col class="w-32" />
+						<col class="w-32" />
+						<col class="w-32" />
+						<col class="w-40" />
 					</colgroup>
 					<thead
 						><tr
-							><th>#</th><th>Machine</th><th>Modèle</th><th>État</th><th>Temps d’impression</th><th
-								>Prix d’achat</th
-							><th>Coût d’usage</th><th><span class="sr-only">Actions</span></th></tr
+							><th>#</th><th>Machine</th><th>Modèle</th><th>Buse</th><th>État</th><th>Temps d’impression</th><th
+								>Coût d’usage</th
+							><th><span class="sr-only">Actions</span></th></tr
 						></thead
 					>
 					<tbody>
-						{#each machineDrafts as draft (draft.id)}
-							<TableDraftRow animateRemoval={draft.animateRemoval}>
-								<td data-label="" class="mobile-card-hidden">
-									<Badge small tonal tertiary>Nouveau</Badge>
-								</td>
-								<td data-label="Machine">
-									<div class="grid gap-2">
-										<div class="flex items-center">
-											<Input
-												required
-												requiredFeedback={RequiredFeedback.None}
-												invalid={Boolean(draft.error && !draft.surname.trim())}
-												validationAttempt={draft.validationAttempt}
-												bind:value={draft.surname}
-												placeholder="Ex. K2 du fond"
-												aria-label="Surnom de la nouvelle machine"
-												disabled={draft.busy}
-											/>
-										</div>
-									</div>
-								</td>
-								<td data-label="Modèle">
-									<div class="flex items-center">
-										<Input
-											as="select"
-											required
-											requiredFeedback={RequiredFeedback.None}
-											invalid={Boolean(draft.error && !draft.modelId)}
-											validationAttempt={draft.validationAttempt}
-											bind:value={draft.modelId}
-											aria-label="Modèle de la nouvelle machine"
-											disabled={draft.busy}
-										>
-											{#each models as model (model.id)}
-												<option value={model.id}>{model.brand} · {model.name}</option>
-											{/each}
-										</Input>
-									</div>
-								</td>
-								<td data-label="État"><MachineStatus state="available" /></td>
-								<td data-label="Temps d’impression">0h</td>
-								<td data-label="Prix d’achat">
-									<div class="flex min-w-28 items-center gap-1.5">
-										<Input
-											required
-											requiredFeedback={RequiredFeedback.None}
-											invalid={Boolean(draft.error && !draft.purchaseCost.trim())}
-											validationAttempt={draft.validationAttempt}
-											bind:value={draft.purchaseCost}
-											placeholder="0,00"
-											inputmode="decimal"
-											aria-label="Prix d’achat de la nouvelle machine"
-											disabled={draft.busy}
-										/><span class="font-medium">€</span>
-									</div>
-								</td>
-								<td data-label="Coût d’usage" class="text-surface-700-300">—</td>
-								<td data-label="" class="mobile-card-actions">
-									<IconAction
-										label="Créer la machine"
-										tone="success"
-										disabled={draft.busy}
-										onclick={() => saveMachineDraft(draft.id)}><Check size={18} /></IconAction
-									>
-									<IconAction
-										label="Annuler la création"
-										tone="error"
-										disabled={draft.busy}
-										onclick={() => cancelMachineDraft(draft.id)}><X size={18} /></IconAction
-									>
-								</td>
-							</TableDraftRow>
-						{/each}
 						{#each machines as machine, index (machine.id)}
 							<tr
 								class="cursor-pointer transition hover:bg-surface-100-900"
-								class:bg-tertiary-50-950={pinnedMachineIds.includes(machine.id)}
 								role="link"
 								tabindex="0"
 								aria-label={`Ouvrir ${machine.surname}`}
@@ -1207,23 +1035,22 @@
 										<div class="grid gap-2">
 											<Input
 												bind:value={machineEdits[machine.id].surname}
-												class="w-full min-w-0"
 												aria-label="Surnom de la machine"
+												disabled={machineEdits[machine.id].busy}
 											/>
-											{#if machineEdits[machine.id].error}<small
-													class="text-error-600-400"
-													role="alert">{machineEdits[machine.id].error}</small
+											{#if machineEdits[machine.id].error}<small class="text-error-600-400" role="alert"
+													>{machineEdits[machine.id].error}</small
 												>{/if}
 										</div>
-									{:else}<strong>{machine.surname}</strong><small>#{machine.id.slice(0, 8)}</small
-										>{/if}
+									{:else}
+										<strong>{machine.surname}</strong><small>#{machine.id.slice(0, 8)}</small>
+									{/if}
 								</td>
 								<td data-label="Modèle">
 									{#if machineEdits[machine.id]}
 										<Input
 											as="select"
 											bind:value={machineEdits[machine.id].modelId}
-											class="w-full min-w-0"
 											disabled={machineEdits[machine.id].busy}
 											aria-label="Modèle de la machine"
 										>
@@ -1236,8 +1063,24 @@
 										<small>{machine.model?.brand ?? '—'}</small>
 									{/if}
 								</td>
-								<td data-label="État"
-									>{#if machineEdits[machine.id]}<SelectableBadge
+								<td data-label="Buse">
+									{#if machineEdits[machine.id]}
+										<MetricInput
+											label={`Diamètre de buse de ${machine.surname}`}
+											labelVisible={false}
+											required
+											bind:value={machineEdits[machine.id].nozzleSize}
+											unit="mm"
+											units={millimeterUnits}
+											disabled={machineEdits[machine.id].busy}
+										/>
+									{:else}
+										{nozzleLabel(machine.nozzleSize)}
+									{/if}
+								</td>
+								<td data-label="État">
+									{#if machineEdits[machine.id]}
+										<SelectableBadge
 											value={machineEdits[machine.id].state}
 											options={machineStateOptions}
 											size="sm"
@@ -1245,27 +1088,13 @@
 											ariaLabel={`Modifier l’état : ${machineStateLabel(machineEdits[machine.id].state)}`}
 											onChange={(state) => updateInlineMachineState(machine.id, state)}
 										/>
-									{:else}<MachineStatus state={machine.state} />{/if}</td
-								>
-								<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
-								<td data-label="Prix d’achat">
-									{#if machineEdits[machine.id]}
-										<div class="flex min-w-24 items-center gap-1.5">
-											<Input
-												required
-												requiredFeedback={RequiredFeedback.None}
-												bind:value={machineEdits[machine.id].purchaseCost}
-												inputmode="decimal"
-												aria-label={`Prix d’achat de ${machine.surname}`}
-												disabled={machineEdits[machine.id].busy}
-											/><span class="font-medium">€</span>
-										</div>
 									{:else}
-										{metricLabel(machine.purchaseCost)}
+										<MachineStatus state={machine.state} />
 									{/if}
 								</td>
+								<td data-label="Temps d’impression">{metricLabel(machine.printingTime)}</td>
 								<td data-label="Coût d’usage">{metricUsageCostLabel(machine.usageCost)}</td>
-								<td data-label="" class="mobile-card-actions">
+								<td data-label="" class="mobile-card-actions text-right whitespace-nowrap">
 									{#if machineEdits[machine.id]}
 										<IconAction
 											label={`Confirmer la modification de ${machine.surname}`}
@@ -1281,13 +1110,13 @@
 										>
 									{:else}
 										<IconAction
+											label={`Modifier ${machine.surname}`}
+											onclick={() => beginMachineEdit(machine)}><Pencil size={18} /></IconAction
+										>
+										<IconAction
 											label={`Enregistrer une maintenance pour ${machine.surname}`}
 											onclick={() => openMaintenanceRecorder(machine)}
 											><Wrench size={18} /></IconAction
-										>
-										<IconAction
-											label={`Modifier ${machine.surname}`}
-											onclick={() => beginMachineEdit(machine)}><Pencil size={18} /></IconAction
 										>
 										<IconAction
 											label={`Supprimer ${machine.surname}`}
@@ -1413,9 +1242,7 @@
 							<label
 								class="flex min-h-11 items-center gap-3 rounded-base border border-surface-300-700 px-3 py-2 hover:bg-surface-100-900"
 							>
-								<input
-									class="checkbox"
-									type="checkbox"
+								<Checkbox
 									value={setting.kind}
 									bind:group={maintenanceKinds}
 								/>
@@ -1553,9 +1380,7 @@
 										/></td
 									>
 									<td data-label="Filtre">
-										<input
-											class="checkbox"
-											type="checkbox"
+										<Checkbox
 											bind:checked={draft.hasCarbonFilter}
 											aria-label="Filtre à charbon"
 										/>
@@ -1636,9 +1461,7 @@
 											/></td
 										>
 										<td data-label="Filtre">
-											<input
-												class="checkbox"
-												type="checkbox"
+											<Checkbox
 												bind:checked={modelEdits[model.id].hasCarbonFilter}
 												aria-label="Filtre à charbon"
 											/>
@@ -1724,7 +1547,7 @@
 					}}
 					class="grid gap-4"
 				>
-					<div class="grid grid-cols-3 gap-3 max-[700px]:grid-cols-1">
+					<div class="grid grid-cols-4 items-end gap-3 max-[700px]:grid-cols-1">
 						<label class="label"
 							>Modèle<Input as="select" required bind:value={machineForm.modelId}
 								><option value="" disabled>Choisir un modèle</option
@@ -1739,12 +1562,20 @@
 								placeholder="Ex. K2 du fond"
 							/></label
 						><MetricInput
-							label="Prix d’achat réel"
+							label="Prix d’achat"
 							required
 							requiredFeedback={RequiredFeedback.Full}
 							bind:value={machineForm.purchaseCost}
 							unit="€"
 							units={priceUnits}
+						/>
+						<MetricInput
+							label="Buse"
+							required
+							requiredFeedback={RequiredFeedback.Full}
+							bind:value={machineForm.nozzleSize}
+							unit="mm"
+							units={millimeterUnits}
 						/>
 					</div>
 					<div class="flex justify-end gap-2.5">

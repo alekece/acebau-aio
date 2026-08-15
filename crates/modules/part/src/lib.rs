@@ -1,8 +1,8 @@
 #![allow(clippy::pedantic)]
 
 use acebau_database::Table;
-use acebau_machine::Machine;
-use acebau_unit::{Mass, Time};
+use acebau_machine::MachineModel;
+use acebau_unit::{Length, Mass, Time};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -21,8 +21,9 @@ pub struct PrintedPiece {
 pub struct PieceMachineProfile {
     #[table(relationship(name = piece, target = PrintedPiece))]
     pub piece_id: Uuid,
-    #[table(relationship(name = machine, target = Machine))]
-    pub machine_id: Uuid,
+    #[table(relationship(name = machine_model, target = MachineModel))]
+    pub machine_model_id: Uuid,
+    pub nozzle_size: Length,
     pub printing_time: Time,
     pub filament_mass: Mass,
     pub plate_capacity: i32,

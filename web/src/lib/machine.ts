@@ -1,4 +1,4 @@
-import type { MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
+import type { LengthUnit, MetricDTO, PowerUnit, PriceUnit, RatioDTO, TimeUnit } from '$lib/unit';
 
 export type MachineState = 'available' | 'running' | 'maintenance' | 'broken';
 
@@ -17,6 +17,7 @@ export type Machine = {
 	surname: string;
 	modelId: string;
 	purchaseCost: MetricDTO<PriceUnit>;
+	nozzleSize: MetricDTO<LengthUnit>;
 	printingTime: MetricDTO<TimeUnit>;
 	usageCost: RatioDTO<PriceUnit, TimeUnit>;
 	state: MachineState;

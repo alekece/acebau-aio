@@ -39,7 +39,7 @@ export const load: PageLoad = async ({ fetch }) => {
 			}
 			machines(page: $page, pageSize: $pageSize) {
 				items {
-					id surname modelId purchaseCost { value unit } printingTime { value unit }
+					id surname modelId purchaseCost { value unit } nozzleSize { value unit } printingTime { value unit }
 					usageCost { value numeratorUnit denominatorUnit } state
 					model {
 						id brand name

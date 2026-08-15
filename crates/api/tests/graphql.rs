@@ -72,6 +72,7 @@ async fn machine_models_can_be_created_read_updated_and_deleted(pool: PgPool) {
         .as_array()
         .expect("machine fields should be introspectable");
     assert!(machine_fields.iter().any(|field| field["name"] == "purchaseCost"));
+    assert!(machine_fields.iter().any(|field| field["name"] == "nozzleSize"));
     assert!(machine_fields.iter().any(|field| field["name"] == "model"));
     assert!(machine_fields.iter().any(|field| field["name"] == "usageCost"));
 
@@ -296,6 +297,7 @@ async fn business_modules_are_composed_and_paginated(pool: PgPool) {
             "modelId": machine_model["createMachineModel"]["id"],
             "surname": format!("Production printer {}", std::process::id()),
             "purchaseCost": { "value": "100", "unit": "€" },
+            "nozzleSize": { "value": "0.4", "unit": "mm" },
             "printingTime": { "value": "0", "unit": "h" },
             "state": "available"
         }}),
